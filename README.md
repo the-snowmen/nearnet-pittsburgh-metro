@@ -1,5 +1,7 @@
 # nearnet-pittsburgh
 
+**▶ Live demo: https://the-snowmen.github.io/nearnet-pittsburgh-metro/**
+
 Client-side fiber near-net proximity screen for Pittsburgh; DuckDB-WASM over static GeoParquet, no backend.
 
 A fully client-side web app that screens buildings near a **modeled** fiber corridor as

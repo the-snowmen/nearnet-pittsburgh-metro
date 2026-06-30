@@ -237,20 +237,20 @@ export default function MapView({ ready, sliders, facts }: Props) {
         type: "circle",
         source: "points",
         "source-layer": "buildings_pts",
-        maxzoom: 14,
+        maxzoom: 12,
         paint: {
           "circle-color": costColorExpression(slidersRef.current),
           "circle-opacity": costOpacityExpression(),
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 1.3, 13, 3, 14, 4.5],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 1.3, 11, 2.4, 12, 3.6],
         },
       });
-      // Cost surface — footprint POLYGONS when zoomed in (z14+).
+      // Cost surface — footprint POLYGONS when zoomed in (z12+).
       map.addLayer({
         id: "buildings-fill",
         type: "fill",
         source: "footprints",
         "source-layer": "buildings",
-        minzoom: 14,
+        minzoom: 12,
         paint: {
           // fill-color is the only est/slider-dependent prop (updated on settle);
           // fill-opacity is in_range-only (static), so it's set once here.
@@ -264,7 +264,7 @@ export default function MapView({ ready, sliders, facts }: Props) {
         type: "line",
         source: "footprints",
         "source-layer": "buildings",
-        minzoom: 14,
+        minzoom: 12,
         filter: ["==", ["get", "building_id"], ""],
         paint: { "line-color": "#111", "line-width": 2 },
       });
