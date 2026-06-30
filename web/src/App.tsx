@@ -57,7 +57,9 @@ export default function App() {
       </button>
       <aside id="nn-panel" className={"nn-panel" + (panelOpen ? " open" : "")}>
         <header className="nn-head">
-          <h1>near-net · Pittsburgh</h1>
+          <h1>
+            near-net · Pittsburgh <span className="nn-ver">v{__APP_VERSION__}</span>
+          </h1>
           <p className="nn-tag">
             A client-side fiber <b>near-net proximity screen</b> — a tunable
             screening estimate over open data.

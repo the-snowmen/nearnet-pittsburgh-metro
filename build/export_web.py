@@ -189,16 +189,17 @@ def _build_tiles() -> None:
 
     points_in = TILE_SRC / "points.geojson"
     foot_in = TILE_SRC / "buildings.geojson"
+    # Tight zoom ranges keep the tilesets small (features are stored per zoom
+    # level, so every extra level multiplies size + the deploy payload). MapLibre
+    # overzooms the top level, so a narrow range still renders when zoomed past it.
     runs = [
-        # Centroid points — overview surface. Keep full detail by z12; thin only the
-        # densest cells at the lowest zooms so tiles stay small.
+        # Centroid points — overview surface (layer is visible only below z14).
         ["tippecanoe", "-o", str(WEB_DATA / "points.pmtiles"), "-l", "buildings_pts",
-         "-Z10", "-z14", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
-         "-f", str(points_in)],
-        # Footprint polygons — only needed when zoomed in (z13+).
+         "-Z11", "-z13", "--drop-densest-as-needed", "-f", str(points_in)],
+        # Footprint polygons — only needed when zoomed in (layer minzoom 14);
+        # z14-15, overzoomed for 16. drop-densest keeps tiles within limits.
         ["tippecanoe", "-o", str(WEB_DATA / "footprints.pmtiles"), "-l", "buildings",
-         "-Z13", "-z16", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
-         "-f", str(foot_in)],
+         "-Z14", "-z15", "--drop-densest-as-needed", "-f", str(foot_in)],
     ]
     for cmd in runs:
         out = Path(cmd[2]).name

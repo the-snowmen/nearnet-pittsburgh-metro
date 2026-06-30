@@ -1,7 +1,7 @@
 {
   "name": "nearnet-pgh-web",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "near-net Pittsburgh — client-side fiber near-net proximity screen (V1)",
   "scripts": {

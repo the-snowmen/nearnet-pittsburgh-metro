@@ -32,6 +32,11 @@ body {
   padding: 18px 18px 28px;
 }
 .nn-head h1 { font-size: 20px; margin: 0 0 6px; letter-spacing: 0.2px; }
+.nn-ver {
+  font-size: 11px; font-weight: 600; color: var(--accent);
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 1px 7px; vertical-align: middle; margin-left: 4px;
+}
 .nn-tag { font-size: 13px; color: var(--text); margin: 0 0 8px; line-height: 1.45; }
 .nn-honesty {
   font-size: 11.5px;
