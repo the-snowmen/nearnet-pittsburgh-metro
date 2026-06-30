@@ -1,0 +1,16 @@
+# near-net Phase 0 build pipeline — offline ETL only (the V1 app ships zero of this).
+# All deps permissive / MIT-compatible (DESIGN.md §12).
+
+# Fetch + emit + closing-query validation
+duckdb>=1.1.0          # spatial extension auto-decodes Overture WKB geometry (>=1.1.0)
+pyarrow>=15            # GeoParquet writer backend for geopandas.to_parquet
+
+# Build geometry
+geopandas>=1.0         # to_parquet writes GeoParquet by default; sjoin_nearest
+shapely>=2.0           # vectorized STRtree.query_nearest, line_locate/interpolate_point
+pyproj>=3.6            # CRS transforms (4326/4269 -> 2272 ftUS)
+pandas>=1.4
+
+# Source fetchers
+osmnx>=2.0             # features_from_polygon (v2 API); roads/rail/bridges
+pygris>=0.2            # Census TIGER PLACE clip boundary (GEOID 4261000)
