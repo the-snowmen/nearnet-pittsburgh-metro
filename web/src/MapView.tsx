@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import type { BuildingFacts, Sliders } from "./cost";
@@ -148,6 +148,7 @@ export default function MapView({ ready, sliders, facts }: Props) {
   const pinnedPropsRef = useRef<GeoJSON.GeoJsonProperties>(null);
   const boundsRef = useRef<maplibregl.LngLatBoundsLike>(CITY_BOUNDS);
   const repaintTimer = useRef<number | undefined>(undefined);
+  const [zoom, setZoom] = useState<number>(ZOOM);
 
   slidersRef.current = sliders;
   factsRef.current = facts;
@@ -172,6 +173,9 @@ export default function MapView({ ready, sliders, facts }: Props) {
       "top-left",
     );
     map.addControl(new maplibregl.ScaleControl({ unit: "imperial" }), "bottom-left");
+    // Live zoom readout — current dots(<12) vs footprints(≥12) breakpoint is at z12.
+    setZoom(map.getZoom());
+    map.on("zoom", () => setZoom(map.getZoom()));
 
     popupRef.current = new maplibregl.Popup({
       closeButton: false,
@@ -427,6 +431,9 @@ export default function MapView({ ready, sliders, facts }: Props) {
         aria-label="Pittsburgh near-net cost-screen map. Hover or click a building for its estimated connection cost."
       />
       {!ready && <div className="nn-map-loading">Loading modeled facts…</div>}
+      <div className="nn-zoom" aria-live="off" title="Current map zoom level">
+        z {zoom.toFixed(1)}
+      </div>
     </div>
   );
 }

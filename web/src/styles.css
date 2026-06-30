@@ -101,6 +101,13 @@ body {
   background: rgba(22,28,36,0.92); color: var(--text); padding: 8px 16px;
   border-radius: 6px; font-size: 13px; z-index: 5; border: 1px solid var(--line);
 }
+.nn-zoom {
+  position: absolute; right: 10px; bottom: 28px; z-index: 5;
+  background: rgba(22,28,36,0.9); color: var(--text);
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 3px 9px; font-size: 12px; font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px; pointer-events: none; user-select: none;
+}
 
 /* ---------------- popup ---------------- */
 .nn-popup .maplibregl-popup-content {
