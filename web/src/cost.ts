@@ -39,6 +39,49 @@ export const DEFAULT_SLIDERS: Sliders = {
   budget: 100000,
 };
 
+// Assumption presets — one-click cost-scenario bundles. They set the cost
+// *opinions* only; `budget` (the user's screening threshold) is left untouched.
+export type PresetSliders = Omit<Sliders, "budget">;
+export interface Preset {
+  name: string;
+  hint: string;
+  sliders: PresetSliders;
+}
+
+export const PRESETS: Preset[] = [
+  {
+    name: "Optimistic",
+    hint: "cheap build, mostly aerial, bridges used",
+    sliders: {
+      costPerFt: 18, circuity: 1.1, boreCost: 12000, bridgeCost: 3000,
+      railCost: 15000, interstateCost: 9000, arterialCost: 1500, useBridges: true,
+    },
+  },
+  {
+    name: "Typical",
+    hint: "literature-grounded midpoint (default)",
+    sliders: {
+      costPerFt: 30, circuity: 1.25, boreCost: 20000, bridgeCost: 5000,
+      railCost: 25000, interstateCost: 15000, arterialCost: 3000, useBridges: true,
+    },
+  },
+  {
+    name: "Conservative",
+    hint: "costly build, hard bores, no bridge discount",
+    sliders: {
+      costPerFt: 55, circuity: 1.35, boreCost: 35000, bridgeCost: 9000,
+      railCost: 45000, interstateCost: 28000, arterialCost: 6000, useBridges: false,
+    },
+  },
+];
+
+/** True if the current sliders match a preset's cost assumptions (budget ignored). */
+export function matchesPreset(s: Sliders, p: Preset): boolean {
+  return (Object.keys(p.sliders) as (keyof PresetSliders)[]).every(
+    (k) => s[k] === p.sliders[k],
+  );
+}
+
 // Per-building facts pulled once from the parquet (for the hover breakout). The
 // live coloring is computed by DuckDB; this mirror lets the popup itemize
 // instantly without a round-trip.

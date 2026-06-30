@@ -1,5 +1,5 @@
 import type { Sliders } from "./cost";
-import { fmtUSD } from "./cost";
+import { fmtUSD, PRESETS, matchesPreset } from "./cost";
 
 interface Props {
   sliders: Sliders;
@@ -44,6 +44,27 @@ function Row({
 export default function Controls({ sliders: s, onChange }: Props) {
   return (
     <div className="nn-controls">
+      <div className="nn-preset-group" role="group" aria-label="Cost assumption presets">
+        <div className="nn-group-h">Assumption preset</div>
+        <div className="nn-presets">
+          {PRESETS.map((p) => {
+            const active = matchesPreset(s, p);
+            return (
+              <button
+                key={p.name}
+                type="button"
+                className={"nn-preset" + (active ? " active" : "")}
+                aria-pressed={active}
+                title={p.hint}
+                onClick={() => onChange(p.sliders)}
+              >
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <Row
         label="Circuity (straight-line → road detour)"
         value={s.circuity}

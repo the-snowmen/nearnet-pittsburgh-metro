@@ -90,6 +90,51 @@ class RecenterControl implements maplibregl.IControl {
   }
 }
 
+// Itemized screening-estimate popup HTML (shared by hover preview + click pin).
+function popupHTML(fct: BuildingFacts, s: Sliders): string {
+  const { terms, total } = breakdown(fct, s);
+  const reachable = fct.in_range && total <= s.budget;
+  const status = !fct.in_range
+    ? `<span class="nn-bad">beyond plausible service distance</span>`
+    : reachable
+      ? `<span class="nn-good">within budget</span>`
+      : `<span class="nn-warn">over budget</span>`;
+  const rows = terms
+    .map(
+      (t) =>
+        `<div class="nn-row"><span>${t.label}<br><em>${t.detail}</em></span><b>${fmtUSD(
+          t.cost,
+        )}</b></div>`,
+    )
+    .join("");
+  return `<div class="nn-pop">
+       <div class="nn-pop-h">Screening estimate ${status}</div>
+       ${rows}
+       <div class="nn-row nn-total"><span>Estimated cost</span><b>${fmtUSD(total)}</b></div>
+       <div class="nn-pop-meta">${fct.building_class ?? "building"} · ${fct.poi_count} POI${
+         fct.poi_count === 1 ? "" : "s"
+       }${fct.bridge_available ? " · bridge nearby" : ""}</div>
+       <div class="nn-pop-foot">Modeled lower-bound screen — not a build cost.</div>
+     </div>`;
+}
+
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+// Build the centroid → corridor connector line from a feature's cx,cy → nx,ny props.
+function connectorFC(p: GeoJSON.GeoJsonProperties): GeoJSON.FeatureCollection {
+  if (!p || p.nx == null || p.ny == null || p.cx == null || p.cy == null) return EMPTY_FC;
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates: [[+p.cx, +p.cy], [+p.nx, +p.ny]] },
+      },
+    ],
+  };
+}
+
 export default function MapView({ ready, sliders, facts }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -97,7 +142,10 @@ export default function MapView({ ready, sliders, facts }: Props) {
   const slidersRef = useRef<Sliders>(sliders);
   const factsRef = useRef<Map<string, BuildingFacts> | null>(facts);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const pinPopupRef = useRef<maplibregl.Popup | null>(null);
   const hoverIdRef = useRef<string | null>(null);
+  const pinnedIdRef = useRef<string | null>(null);
+  const pinnedPropsRef = useRef<GeoJSON.GeoJsonProperties>(null);
   const boundsRef = useRef<maplibregl.LngLatBoundsLike>(CITY_BOUNDS);
   const repaintTimer = useRef<number | undefined>(undefined);
 
@@ -130,6 +178,12 @@ export default function MapView({ ready, sliders, facts }: Props) {
       closeOnClick: false,
       maxWidth: "320px",
       className: "nn-popup",
+    });
+    pinPopupRef.current = new maplibregl.Popup({
+      closeButton: true,
+      closeOnClick: false,
+      maxWidth: "320px",
+      className: "nn-popup nn-popup-pin",
     });
 
     map.on("load", () => {
@@ -275,6 +329,11 @@ export default function MapView({ ready, sliders, facts }: Props) {
     const expr = costColorExpression(slidersRef.current);
     map.setPaintProperty("buildings-pts", "circle-color", expr);
     map.setPaintProperty("buildings-fill", "fill-color", expr);
+    // keep a pinned popup's itemized numbers in sync with the sliders
+    if (pinnedIdRef.current) {
+      const fct = factsRef.current?.get(pinnedIdRef.current);
+      if (fct) pinPopupRef.current?.setHTML(popupHTML(fct, slidersRef.current));
+    }
   }
 
   useEffect(() => {
@@ -283,97 +342,90 @@ export default function MapView({ ready, sliders, facts }: Props) {
     return () => window.clearTimeout(repaintTimer.current);
   }, [sliders]);
 
-  // --- hover: itemized breakout + connector ---------------------------------
+  // --- hover preview + click-to-pin -----------------------------------------
   function attachHover() {
     const map = mapRef.current!;
-    const popup = popupRef.current!;
+    const hoverPopup = popupRef.current!;
+    const pinPopup = pinPopupRef.current!;
+
+    // connector + footprint outline follow a building id (props carry the line ends)
+    const highlight = (id: string, props: GeoJSON.GeoJsonProperties) => {
+      map.setFilter("buildings-outline", ["==", ["get", "building_id"], id || ""]);
+      (map.getSource("hoverconn") as maplibregl.GeoJSONSource).setData(
+        id ? connectorFC(props) : EMPTY_FC,
+      );
+    };
+    // when the cursor leaves, fall back to the pinned building (or nothing)
+    const restoreToPinned = () =>
+      pinnedIdRef.current
+        ? highlight(pinnedIdRef.current, pinnedPropsRef.current)
+        : highlight("", null);
 
     const onMove = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
       if (!f || !f.properties) return;
       const p = f.properties;
       const id = String(p.building_id);
+      map.getCanvas().style.cursor = "pointer";
       if (hoverIdRef.current !== id) {
         hoverIdRef.current = id;
-        // footprint outline highlight (only visible when zoomed in)
-        map.setFilter("buildings-outline", ["==", ["get", "building_id"], id]);
-        // draw the connector from the building centroid to the corridor (cx,cy → nx,ny)
-        const conn = map.getSource("hoverconn") as maplibregl.GeoJSONSource;
-        conn.setData(
-          p.nx != null && p.ny != null && p.cx != null && p.cy != null
-            ? {
-                type: "FeatureCollection",
-                features: [
-                  {
-                    type: "Feature",
-                    properties: {},
-                    geometry: {
-                      type: "LineString",
-                      coordinates: [[+p.cx, +p.cy], [+p.nx, +p.ny]],
-                    },
-                  },
-                ],
-              }
-            : { type: "FeatureCollection", features: [] },
-        );
+        highlight(id, p);
       }
-      map.getCanvas().style.cursor = "pointer";
-
       const fct = factsRef.current?.get(id);
-      if (!fct) return;
-      const s = slidersRef.current;
-      const { terms, total } = breakdown(fct, s);
-      const reachable = fct.in_range && total <= s.budget;
-      const status = !fct.in_range
-        ? `<span class="nn-bad">beyond plausible service distance</span>`
-        : reachable
-          ? `<span class="nn-good">within budget</span>`
-          : `<span class="nn-warn">over budget</span>`;
-      const rows = terms
-        .map(
-          (t) =>
-            `<div class="nn-row"><span>${t.label}<br><em>${t.detail}</em></span><b>${fmtUSD(
-              t.cost,
-            )}</b></div>`,
-        )
-        .join("");
-      popup
-        .setLngLat(e.lngLat)
-        .setHTML(
-          `<div class="nn-pop">
-             <div class="nn-pop-h">Screening estimate ${status}</div>
-             ${rows}
-             <div class="nn-row nn-total"><span>Estimated cost</span><b>${fmtUSD(total)}</b></div>
-             <div class="nn-pop-meta">${fct.building_class ?? "building"} · ${fct.poi_count} POI${
-               fct.poi_count === 1 ? "" : "s"
-             }${fct.bridge_available ? " · bridge nearby" : ""}</div>
-             <div class="nn-pop-foot">Modeled lower-bound screen — not a build cost.</div>
-           </div>`,
-        )
-        .addTo(map);
+      if (fct)
+        hoverPopup.setLngLat(e.lngLat).setHTML(popupHTML(fct, slidersRef.current)).addTo(map);
     };
 
     const onLeave = () => {
       map.getCanvas().style.cursor = "";
       hoverIdRef.current = null;
-      map.setFilter("buildings-outline", ["==", ["get", "building_id"], ""]);
-      (map.getSource("hoverconn") as maplibregl.GeoJSONSource).setData({
-        type: "FeatureCollection",
-        features: [],
-      });
-      popup.remove();
+      hoverPopup.remove();
+      restoreToPinned();
     };
 
-    // Hover works on whichever surface is active: dots (overview) or footprints (zoomed in).
+    const onClick = (e: maplibregl.MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      if (!f || !f.properties) return;
+      const p = f.properties;
+      const id = String(p.building_id);
+      const fct = factsRef.current?.get(id);
+      if (!fct) return;
+      pinnedIdRef.current = id;
+      pinnedPropsRef.current = p;
+      highlight(id, p);
+      pinPopup.setLngLat(e.lngLat).setHTML(popupHTML(fct, slidersRef.current)).addTo(map);
+    };
+
+    // pin dismissed (✕ / Esc / empty-map click) -> clear state + highlight
+    pinPopup.on("close", () => {
+      pinnedIdRef.current = null;
+      pinnedPropsRef.current = null;
+      if (!hoverIdRef.current) highlight("", null);
+    });
+
+    // hover + click work on whichever surface is active: dots or footprints.
     for (const lyr of ["buildings-pts", "buildings-fill"]) {
       map.on("mousemove", lyr, onMove);
       map.on("mouseleave", lyr, onLeave);
+      map.on("click", lyr, onClick);
     }
+    map.on("click", (e) => {
+      if (!map.queryRenderedFeatures(e.point, { layers: ["buildings-pts", "buildings-fill"] }).length)
+        pinPopup.remove();
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") pinPopup.remove();
+    });
   }
 
   return (
     <div className="nn-map-wrap">
-      <div ref={containerRef} className="nn-map" />
+      <div
+        ref={containerRef}
+        className="nn-map"
+        role="application"
+        aria-label="Pittsburgh near-net cost-screen map. Hover or click a building for its estimated connection cost."
+      />
       {!ready && <div className="nn-map-loading">Loading modeled facts…</div>}
     </div>
   );

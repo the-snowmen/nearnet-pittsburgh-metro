@@ -12,6 +12,7 @@ export default function App() {
   const [count, setCount] = useState(0);
   const [sliders, setSliders] = useState<Sliders>(DEFAULT_SLIDERS);
   const [stats, setStats] = useState<CostStats | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true); // mobile drawer (no-op on desktop)
   const factsRef = useRef<Map<string, BuildingFacts> | null>(null);
   const debounceRef = useRef<number | undefined>(undefined);
 
@@ -46,7 +47,15 @@ export default function App() {
 
   return (
     <div className="nn-app">
-      <aside className="nn-panel">
+      <button
+        className="nn-panel-toggle"
+        aria-expanded={panelOpen}
+        aria-controls="nn-panel"
+        onClick={() => setPanelOpen((o) => !o)}
+      >
+        {panelOpen ? "✕ Close" : "☰ Controls"}
+      </button>
+      <aside id="nn-panel" className={"nn-panel" + (panelOpen ? " open" : "")}>
         <header className="nn-head">
           <h1>near-net · Pittsburgh</h1>
           <p className="nn-tag">
