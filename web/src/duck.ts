@@ -11,7 +11,7 @@ import mvp_worker from "@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?ur
 import eh_wasm from "@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url";
 import eh_worker from "@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url";
 
-import type { BuildingFacts, Sliders } from "./cost";
+import type { BuildingFacts, POI, Sliders } from "./cost";
 import { buildCostSQL } from "./cost";
 import { latLngToCell } from "h3-js";
 import type { CellRes, CellScore, CellSliders, CellStats, DemandMode } from "./cell";
@@ -113,6 +113,47 @@ export async function getConnector(buildingId: string): Promise<string | null> {
   const val = gj == null ? null : String(gj);
   _connCache.set(buildingId, val);
   return val;
+}
+
+// --- V2.3 building POI detail (parent → children dossier) --------------------
+// pois.parquet has no GEOMETRY column, so DuckDB-WASM reads it with zero
+// extensions (same pattern as buildings/cells). Queried one building at a time on
+// click; additive & removable (absent file → getBuildingPois returns []).
+let poisReady = false;
+const _poiCache = new Map<string, POI[]>();
+
+/** Register pois.parquet + CREATE TABLE pois. Throws if the file is absent. */
+export async function initPois(url: string): Promise<void> {
+  if (!db || !conn) throw new Error("DuckDB not initialised");
+  await db.registerFileURL("pois.parquet", url, duckdb.DuckDBDataProtocol.HTTP, false);
+  await conn.query(`CREATE OR REPLACE TABLE pois AS SELECT * FROM read_parquet('pois.parquet')`);
+  poisReady = true;
+}
+
+/** Whether the POI detail table loaded (App gates the dossier UI on this). */
+export const poisInitialised = (): boolean => poisReady;
+
+/** Child POIs of one building (name/type/phone/address), memoized. [] if none/absent. */
+export async function getBuildingPois(buildingId: string): Promise<POI[]> {
+  if (!poisReady || !conn) return [];
+  const hit = _poiCache.get(buildingId);
+  if (hit !== undefined) return hit;
+  const safe = buildingId.replace(/'/g, "''");
+  const res = await conn.query(
+    `SELECT poi_id, building_id, name, category, phone, address, locality
+     FROM pois WHERE building_id = '${safe}' ORDER BY name`,
+  );
+  const out: POI[] = (res.toArray() as any[]).map((r) => ({
+    poi_id: String(r.poi_id),
+    building_id: String(r.building_id),
+    name: r.name == null ? null : String(r.name),
+    category: r.category == null ? null : String(r.category),
+    phone: r.phone == null ? null : String(r.phone),
+    address: r.address == null ? null : String(r.address),
+    locality: r.locality == null ? null : String(r.locality),
+  }));
+  _poiCache.set(buildingId, out);
+  return out;
 }
 
 /** Aggregate stats for the legend / readout (cheap, runs once per slider settle). */

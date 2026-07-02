@@ -93,20 +93,25 @@ def _nearest_distance(tree: shapely.STRtree, geom) -> float:
 # --------------------------------------------------------------------------- #
 # POI assignment
 # --------------------------------------------------------------------------- #
-def _assign_pois(buildings_2272, places_4326, category_map):
-    n = len(buildings_2272)
+def snap_places_to_buildings(buildings_2272, places_4326, category_map):
+    """Snap each whitelisted Overture place to its single nearest building
+    (<= POI_SNAP_FT), one row per place. Shared by the poi_count aggregation
+    (_assign_pois) and the V2.3 per-POI detail bake (build/pois.py).
+
+    Returns (snapped_gdf, stats). `snapped` is in COMPUTE_CRS and carries every
+    place column (name/phone/address…) plus `building_id` + `snap_ft`.
+    """
     stats = {"places_total": int(len(places_4326)), "places_whitelisted": 0,
              "places_snapped": 0}
-    poi_count = np.zeros(n, dtype=np.int64)
     if places_4326.empty:
-        return poi_count, stats
+        return places_4326.iloc[0:0], stats
 
     places = places_4326.to_crs(C.COMPUTE_CRS).copy()
     places["group"] = places["category"].map(category_map)
     white = places[places["group"].isin(C.POI_WHITELIST_GROUPS)].copy()
     stats["places_whitelisted"] = int(len(white))
     if white.empty:
-        return poi_count, stats
+        return white, stats
 
     right = buildings_2272[["building_id", "geometry"]].reset_index(drop=True)
     joined = white.sjoin_nearest(
@@ -116,7 +121,14 @@ def _assign_pois(buildings_2272, places_4326, category_map):
     # equidistant ties emit multiple rows -> keep the single nearest per place
     snapped = snapped.sort_values("snap_ft").drop_duplicates(subset=["place_id"], keep="first")
     stats["places_snapped"] = int(len(snapped))
+    return snapped, stats
 
+
+def _assign_pois(buildings_2272, places_4326, category_map):
+    snapped, stats = snap_places_to_buildings(buildings_2272, places_4326, category_map)
+    poi_count = np.zeros(len(buildings_2272), dtype=np.int64)
+    if snapped.empty:
+        return poi_count, stats
     counts = snapped.groupby("building_id").size()
     mapped = buildings_2272["building_id"].map(counts).fillna(0).astype(np.int64)
     return mapped.to_numpy(), stats

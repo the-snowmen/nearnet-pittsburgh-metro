@@ -101,10 +101,20 @@ def fetch_overture_buildings(bbox: dict, limit: int | None = None) -> gpd.GeoDat
 
 
 def fetch_overture_places(bbox: dict) -> gpd.GeoDataFrame:
+    """Whitelisted-place source for poi_count AND the V2.3 per-POI detail bake.
+
+    Carries the public listing fields (name / phone / freeform address / locality)
+    used by the building→POI dossier. They ride harmlessly through the count path
+    (which only reads category + geometry), so one fetch serves both.
+    """
     con = _duckdb_con()
     sql = f"""
         SELECT id AS place_id,
+               names.primary AS name,
                categories.primary AS category,
+               phones[1] AS phone,
+               addresses[1].freeform AS address,
+               addresses[1].locality AS locality,
                confidence,
                ST_AsWKB(geometry) AS geometry_wkb
         FROM read_parquet('{_overture_path("places")}', filename=true, hive_partitioning=1)

@@ -73,6 +73,20 @@ reproducible and auditable.
 
 ---
 
+## V2.3 — per-POI detail (the building dossier)
+The same whitelisted, nearest-building-snapped places that feed `poi_count` are also
+baked, one row per place, into `web/public/data/pois.parquet` (`build/pois.py`) so a
+click on a building can expand its child POIs — **name, leaf type, phone, address**.
+Fields come straight from the public Overture listing (`names.primary`, `phones[1]`,
+`addresses[1].freeform/.locality`).
+
+**Honesty (guardrails #2/#5; DESIGN §9 labels the POI layer *real* public data):**
+these are real **public Overture listings**, but coverage varies (~93% carry a phone),
+each is **nearest-building snapped** (not authoritative geocoding), and the set is a
+**modeled tenant-density signal** — never "verified tenants", "customers", or "demand".
+The dossier UI states this inline. `pois.parquet` is additive & removable (deleting it
+leaves the app fully working); it does not change `poi_count` or any V2 asset.
+
 ## Tuning log
 Record changes to the whitelist here as the signal is refined against real data.
 
@@ -80,3 +94,6 @@ Record changes to the whitelist here as the signal is refined against real data.
   the defaults above (include automotive / beauty_and_spa / active_life /
   religious_organization / pets; exclude home_service / attractions_and_activities).
   Leaf-level string reconciliation against `overture_categories.csv` pending Phase 0.
+- **2026-07-02** — V2.3 per-POI detail bake added (`pois.parquet`): 21,003 places →
+  18,083 whitelisted → 17,971 snapped, across 5,874 buildings (1.23 MB). Same whitelist
+  + snap policy; only the retained fields grew (name/phone/address).

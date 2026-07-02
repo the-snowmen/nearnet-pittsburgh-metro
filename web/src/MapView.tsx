@@ -59,6 +59,9 @@ interface Props {
   colorDomain: [number, number];
   drillCellIds: string[] | null;
   onCellClick: (cellId: string) => void;
+  // V2.3 — pinned building id (or null on dismiss) → drives the panel POI dossier.
+  onSelectBuilding?: (id: string | null) => void;
+  selectedId?: string | null; // controlled: App clearing it (dossier ✕) drops the pin
 }
 
 // Envelope of the City of Pittsburgh clip (fallback until boundary.geojson loads).
@@ -202,6 +205,8 @@ export default function MapView({
   colorDomain,
   drillCellIds,
   onCellClick,
+  onSelectBuilding,
+  selectedId,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -220,6 +225,7 @@ export default function MapView({
   const cellSlidersRef = useRef<CellSliders>(cellSliders);
   const cellScoreMapRef = useRef<Map<string, CellScore>>(new Map());
   const onCellClickRef = useRef(onCellClick);
+  const onSelectBuildingRef = useRef(onSelectBuilding);
   const [zoom, setZoom] = useState<number>(ZOOM);
 
   slidersRef.current = sliders;
@@ -227,6 +233,13 @@ export default function MapView({
   altitudeRef.current = altitude;
   cellSlidersRef.current = cellSliders;
   onCellClickRef.current = onCellClick;
+  onSelectBuildingRef.current = onSelectBuilding;
+
+  // App cleared the selection (dossier ✕) → drop the map pin to stay in sync.
+  // (Setting it to an id is driven by a map click, which already shows the pin.)
+  useEffect(() => {
+    if (selectedId == null) pinPopupRef.current?.remove();
+  }, [selectedId]);
 
   // --- one-time map construction -------------------------------------------
   useEffect(() => {
@@ -520,6 +533,7 @@ export default function MapView({
       pinnedPropsRef.current = p;
       highlight(id, p);
       pinPopup.setLngLat(e.lngLat).setHTML(popupHTML(fct, slidersRef.current)).addTo(map);
+      onSelectBuildingRef.current?.(id); // open the panel POI dossier
     };
 
     // pin dismissed (✕ / Esc / empty-map click) -> clear state + highlight
@@ -527,6 +541,7 @@ export default function MapView({
       pinnedIdRef.current = null;
       pinnedPropsRef.current = null;
       if (!hoverIdRef.current) highlight("", null);
+      onSelectBuildingRef.current?.(null); // close the dossier
     });
 
     // hover + click work on whichever surface is active: dots or footprints.

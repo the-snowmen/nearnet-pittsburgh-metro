@@ -347,6 +347,40 @@ body {
 }
 .nn-drill button:hover { color: var(--ink); border-color: var(--accent); }
 
+/* building dossier (V2.3 — clicked building + its child POIs) */
+.nn-dossier {
+  border: 1px solid var(--accent); border-radius: var(--r-2);
+  background: var(--paper); padding: var(--sp-3); margin-bottom: var(--sp-4);
+}
+.nn-dossier-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
+.nn-dossier-kicker {
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--accent); font-weight: 600;
+}
+.nn-dossier-title {
+  font-size: var(--fs-h2); font-weight: 600; color: var(--ink); text-transform: capitalize;
+}
+.nn-dossier-close {
+  flex: none; width: 22px; height: 22px; line-height: 1; cursor: pointer;
+  color: var(--muted); background: transparent;
+  border: 1px solid var(--line-2); border-radius: var(--r-1);
+}
+.nn-dossier-close:hover { color: var(--ink); border-color: var(--accent); }
+.nn-dossier-sub { font-size: var(--fs-small); color: var(--muted); margin-top: var(--sp-1); }
+.nn-dossier-empty { font-size: var(--fs-body); color: var(--muted); padding: var(--sp-3) 0; }
+.nn-dossier-list { list-style: none; margin: var(--sp-2) 0 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.nn-dossier-poi { padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
+.nn-dossier-poi:first-child { border-top: none; }
+.nn-poi-name { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+.nn-poi-type { font-size: var(--fs-small); color: var(--muted); text-transform: capitalize; }
+.nn-poi-meta { font-size: var(--fs-small); color: var(--muted); margin-top: 2px; }
+.nn-poi-meta a { color: var(--accent); text-decoration: none; }
+.nn-poi-meta a:hover { text-decoration: underline; }
+.nn-dossier-foot {
+  font-size: var(--fs-eyebrow); color: var(--muted); line-height: 1.5;
+  margin-top: var(--sp-2); font-style: italic;
+}
+
 /* ranked opportunity table */
 .nn-cell-table { margin-top: var(--sp-4); border-top: 1px solid var(--line); padding-top: var(--sp-3); }
 .nn-cell-table-h {

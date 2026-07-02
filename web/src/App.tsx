@@ -5,7 +5,8 @@ import CellControls from "./CellControls";
 import CellTable from "./CellTable";
 import Info from "./Info";
 import OnboardingCue from "./OnboardingCue";
-import { DEFAULT_SLIDERS, fmtUSD, type Sliders, type BuildingFacts } from "./cost";
+import Dossier from "./Dossier";
+import { DEFAULT_SLIDERS, fmtUSD, type Sliders, type BuildingFacts, type POI } from "./cost";
 import {
   DEFAULT_CELL_SLIDERS,
   fmtIndex,
@@ -18,6 +19,8 @@ import {
   loadFacts,
   costStats,
   initConnectors,
+  initPois,
+  getBuildingPois,
   initCells,
   loadCellStats,
   scoreCells,
@@ -36,6 +39,7 @@ const CELL_URLS: Record<CellRes, string> = {
 };
 const CELL_STATS_URL = url("data/cell_stats.parquet");
 const CONNECTORS_URL = url("data/connectors.parquet");
+const POIS_URL = url("data/pois.parquet");
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -43,6 +47,8 @@ export default function App() {
   const [count, setCount] = useState(0);
   const [sliders, setSliders] = useState<Sliders>(DEFAULT_SLIDERS);
   const [stats, setStats] = useState<CostStats | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null); // V2.3 pinned building
+  const [dossierPois, setDossierPois] = useState<POI[] | null>(null); // its child POIs (null = loading)
   // Desktop: open (toggle is display:none, so it can't be closed). Mobile (<720px):
   // start collapsed so the first impression is the map, not a wall of sliders.
   const [panelOpen, setPanelOpen] = useState(
@@ -89,6 +95,12 @@ export default function App() {
       } catch (e) {
         console.warn("routed connectors unavailable (straight-line fallback):", e);
       }
+      // V2.3 POI detail is additive: absent file → the dossier shows "no listings".
+      try {
+        await initPois(POIS_URL);
+      } catch (e) {
+        console.warn("POI detail unavailable (dossier disabled):", e);
+      }
       // Cell layer is additive: a failure here leaves the V1 screen fully working.
       try {
         await initCells(CELL_URLS, CELL_STATS_URL, 8);
@@ -109,6 +121,22 @@ export default function App() {
     }, 110);
     return () => window.clearTimeout(debounceRef.current);
   }, [sliders, ready]);
+
+  // V2.3 — load the pinned building's child POIs (race-guarded on the id).
+  useEffect(() => {
+    if (!ready || selectedId == null) {
+      setDossierPois(null);
+      return;
+    }
+    let live = true;
+    setDossierPois(null); // loading
+    getBuildingPois(selectedId).then((ps) => {
+      if (live) setDossierPois(ps);
+    });
+    return () => {
+      live = false;
+    };
+  }, [selectedId, ready]);
 
   // Cell scoring whenever the cell sliders / resolution settle (Cell altitude only).
   // Stats are (re)loaded here so the density↔mass poi variant always matches.
@@ -221,6 +249,13 @@ export default function App() {
         {/* Buildings altitude — the V1 screen, unchanged. */}
         {!cellMode && (
           <>
+            {selectedId && (
+              <Dossier
+                facts={factsRef.current?.get(selectedId) ?? null}
+                pois={dossierPois}
+                onClear={() => setSelectedId(null)}
+              />
+            )}
             {drillCellId && (
               <div className="nn-drill">
                 Showing {drillCellIds?.length.toLocaleString() ?? 0} buildings in cell{" "}
@@ -360,6 +395,8 @@ export default function App() {
           colorDomain={colorDomain}
           drillCellIds={drillCellIds}
           onCellClick={onCellClick}
+          onSelectBuilding={setSelectedId}
+          selectedId={selectedId}
         />
         {!cellMode && <OnboardingCue />}
       </main>

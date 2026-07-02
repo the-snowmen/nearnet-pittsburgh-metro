@@ -102,6 +102,19 @@ export interface BuildingFacts {
   poi_count: number;
 }
 
+// V2.3 — a child POI of a building (public Overture listing). Loaded on click for
+// the building dossier; coverage varies (~93% phone), nearest-building snapped,
+// a modeled tenant-density signal — never a verified tenant/customer.
+export interface POI {
+  poi_id: string;
+  building_id: string;
+  name: string | null;
+  category: string | null; // leaf type, e.g. "pizza_restaurant"
+  phone: string | null;
+  address: string | null;
+  locality: string | null;
+}
+
 /**
  * The §9 closing query, as a literal SQL string for DuckDB-WASM.
  *
