@@ -88,6 +88,10 @@ def main() -> None:
     print(f"  poi_count              {rep['poi_count']['fraction_with_poi'] or 0:.0%} of buildings ≥1 POI"
           if rep["poi_count"]["fraction_with_poi"] is not None else "  poi_count              n/a")
     print(f"  connector_geom size    +{rep['file_size']['connector_geometry_overhead_pct']}%")
+    rstats = built["stats"].get("routing")
+    if rstats:
+        print(f"  routing                {rstats['graph_nodes']:,} graph nodes · "
+              f"{rstats['n_fallback']:,} straight-line fallback ({rstats['fallback_frac']:.1%})")
     if reachable is not None:
         print(f"  closing query          {reachable:,} reachable")
     print(f"  report                 {C.REPORT_MD}")

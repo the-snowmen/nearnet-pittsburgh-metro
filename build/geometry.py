@@ -18,6 +18,7 @@ import geopandas as gpd
 import shapely
 
 from . import config as C
+from . import routing
 
 
 # --------------------------------------------------------------------------- #
@@ -142,8 +143,6 @@ def build(layers: dict) -> dict:
         corridor.to_crs(C.COMPUTE_CRS).explode(index_parts=False).reset_index(drop=True)
     )
     corridor_2272["network_id"] = [f"net_{i}" for i in range(len(corridor_2272))]
-    corridor_geoms = corridor_2272.geometry.to_numpy()
-    net_ids = corridor_2272["network_id"].to_numpy()
 
     def _lines(name):
         g = layers[name].to_crs(C.COMPUTE_CRS).explode(index_parts=False)
@@ -157,24 +156,16 @@ def build(layers: dict) -> dict:
     }
     bridge_geoms = _lines("bridges")
 
-    # ---- connectors: nearest corridor segment + foot of perpendicular ----- #
-    cent_geoms = buildings_2272.geometry.centroid.to_numpy()
-    tree = shapely.STRtree(corridor_geoms)
-    q = tree.query_nearest(cent_geoms, all_matches=False)  # (2, n): [input_idx, tree_idx]
-    nearest = np.empty(len(cent_geoms), dtype=np.int64)
-    nearest[q[0]] = q[1]                                    # align tree idx to building order
-    nearest_line = corridor_geoms[nearest]
+    # ---- connectors: REAL road-following routed path (V2, DESIGN §3/§5.4) -- #
+    # Offline shortest path over the OSM street graph, centroid -> nearest point of
+    # the `primary` corridor. Baked into the SAME columns as V1's straight line;
+    # NEVER null (disconnected components fall back to the straight-line connector).
+    cent_geoms = buildings_2272.geometry.centroid.to_numpy()  # for centroid_lon/lat output
+    connector_distance_ft, connectors, nearest_network_id, route_stats = routing.route_to_corridor(
+        buildings_2272, layers["road_graph"], corridor_2272
+    )
 
-    d_along = shapely.line_locate_point(nearest_line, cent_geoms)
-    foot = shapely.line_interpolate_point(nearest_line, d_along)
-    connector_distance_ft = shapely.distance(cent_geoms, foot)  # pure straight-line
-
-    cent_xy = shapely.get_coordinates(cent_geoms)
-    foot_xy = shapely.get_coordinates(foot)
-    connectors = shapely.linestrings(np.stack([cent_xy, foot_xy], axis=1))
-    nearest_network_id = net_ids[nearest]
-
-    # ---- tiered crossings -------------------------------------------------- #
+    # ---- tiered crossings (recomputed against the ROUTED path) ------------- #
     crossing_counts = {}
     water_points = {}
     for tier, geoms in barrier_geoms.items():
@@ -234,6 +225,7 @@ def build(layers: dict) -> dict:
         "poi": poi_stats,
         "barrier_counts": {t: int((crossing_counts[t] > 0).sum()) for t in barrier_geoms},
         "n_bridge_available": int(bridge_available.sum()),
+        "routing": route_stats,
     }
 
     return {

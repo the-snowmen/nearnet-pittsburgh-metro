@@ -71,14 +71,14 @@ The build step must be a **reproducible, committed script** (`build/precompute.p
 
 The GeoParquet schema is the contract between versions. **Columns are named for what they mean, not how V1 happens to compute them.** This lets V2 swap in better data with zero application-code changes.
 
-- **V1 (ships now):** distance is straight-line, with the circuity adjustment applied **live in the browser** as a slider (see §6.2). Buffer-style proximity screen. The modeled fiber corridor is the **`primary`-road backbone** (§4).
-- **V2 (documented, not built):** distance is real road-following routing, computed offline and baked into the *same columns*; crossings become a graph-traversal cost model (§5.4).
+- **V1 (shipped):** distance was straight-line, with the circuity adjustment applied **live in the browser** as a slider (see §6.2). Buffer-style proximity screen. The modeled fiber corridor is the **`primary`-road backbone** (§4).
+- **V2 (built):** distance is real road-following routing, computed offline (`build/routing.py`) and baked into the *same columns* — `connector_distance_ft` (routed feet) and `connector_geometry` (the routed polyline). Barrier crossings are recomputed against the routed path. Circuity becomes vestigial (default 1.0), since the routed distance already carries the detour.
 
-The user-facing app is identical across versions. The upgrade is a data swap.
+The user-facing app is identical across versions. The upgrade was a pure data swap — the only web change was drawing the baked routed polyline on hover (a compact `connectors.parquet` fetched one building at a time) instead of reconstructing a straight line from two endpoints.
 
 **Inheritance property (extends to V1.5, §14):** the aggregate cell layer is a *pure function* of `buildings.parquet` — every cell feature is a `SUM`/`MEAN`/percentile/`COUNT` of the contract columns above, read by meaning. So when V2 swaps routed distance into the same `connector_distance_ft` column, re-running the (committed) cell stage upgrades the choropleth to routed distances **for free** — a data swap at *both* altitudes, with zero application-code change. A derived view cannot drift from V1.
 
-**V1 is ruthlessly scoped.** No routing rabbit hole. The seductive pull — "let me just compute real road distance so the number's accurate" — is V2 work wearing a V1 hat. Resist it until the buffer screen is live.
+**V1 was ruthlessly scoped.** No routing rabbit hole. The seductive pull — "let me just compute real road distance so the number's accurate" — was V2 work wearing a V1 hat, deliberately resisted until the buffer screen (V1) and the cell layer (V1.5) were live. Only then was V2 built — and because the schema is the contract, it landed as a data swap with no app rewrite.
 
 ---
 
@@ -160,9 +160,11 @@ So the jurisdiction is **federal / state / private depending on the feature**, n
 
 ### 5.4 What V1 cannot know
 
-Construction method (bore-under vs. aerial-over) is a build-stage decision, not something a buffer screen can infer. That is correctly a V2/offline concern. **V1 detects and tiers crossings; V2's offline routing assigns crossing method and real cost.**
+Construction method (bore-under vs. aerial-over) is a build-stage decision, not something a buffer screen can infer. That is correctly a V2/offline concern. **V1 detects and tiers crossings; V2's offline routing follows the road graph and recomputes crossings against the real routed path.**
 
-**V2 cost model (documented, not built).** The richer model is a **graph-traversal cost**: the network is a graph of nodes and edges, a crossing is a node you pass *through* that adds cost, and each edge and node carries its own traversal cost, accumulated by offline routing over the road graph. This is the V2 routed cost engine — it requires path-finding (intermediate nodes to pass through), which V1 deliberately does **not** do (the V1 connector is a single straight segment). Pricing per-*instance* crossing cost at build time is explicitly **rejected for V1**, because it would move a cost *opinion* into the *facts* layer (§2). In V1, the build step bakes the **count and type** of crossings (facts); the browser prices **per-type cost** (opinion, §6.3).
+**V2 routing engine (built — `build/routing.py`).** The connector is a real shortest path over the OSM street graph. The scalable core is a **single multi-source Dijkstra** from every `primary`-corridor node: one O(E log V) solve yields distance-to-corridor for *every* node in the graph, so each building's routed distance is a dict lookup (snap-to-nearest-node offset + graph distance), not 115k separate searches. The path is undirected (fiber ROW ignores one-ways); a building in a disconnected component falls back to the V1 straight line so `connector_distance_ft` is **never null**. Barrier crossings are recomputed against the routed polyline — a road-following path crosses rivers/rail at real crossing points, not arbitrary perpendiculars.
+
+**What stayed a fact vs. an opinion.** V2 upgrades the *distance* and the *crossing counts* (both geographic facts, baked offline). It deliberately does **not** bake per-*instance* crossing **cost** — the richer "each node carries a priced traversal cost" model — because that would move a cost *opinion* into the *facts* layer (§2). As in V1, the build step bakes the **count and type** of crossings (facts); the browser prices **per-type cost** (opinion, §6.3). That per-instance cost model remains a documented future refinement.
 
 ---
 
@@ -180,7 +182,9 @@ Exposing assumptions as sliders is *more* honest than a black-box number, not le
 
 A **circuity multiplier** (straight-line × road-detour factor) is the honest cheap proxy for routing. US metro road circuity runs ~1.2–1.3, so the factor is empirically grounded, not a fudge. Exposing it as a slider (1.0 = pure straight line → 1.3 = typical detour) makes the **buffer-vs-routing gap interactive and visible** — crank it and watch the reachable set shrink. This teaches the V1→V2 distinction in the UI instead of hiding it.
 
-**Circuity is applied live in the browser, not baked into the data.** `connector_distance_ft` is stored as the **pure straight-line** distance (circuity = 1.0, the geometric minimum / honest lower bound — a geographic *fact*). Circuity is a cost *opinion*, so it lives on the slider and enters the closing query as `… * :circuity …` (§9). Baking it would both break the live slider and put an opinion in the facts layer.
+**Circuity is applied live in the browser, not baked into the data.** In **V1**, `connector_distance_ft` was stored as the **pure straight-line** distance (circuity = 1.0, the geometric minimum / honest lower bound — a geographic *fact*), and circuity was a cost *opinion* on the slider entering the closing query as `… * :circuity …` (§9). Baking it would both break the live slider and put an opinion in the facts layer.
+
+**V2 update:** `connector_distance_ft` is now the **routed** road-following distance, so the detour circuity faked is already in the data. The slider therefore **defaults to 1.0** and is relabeled as an optional *slack* factor (kept for sensitivity exploration); it is still a browser opinion, still applied live. The closing query is byte-for-byte unchanged.
 
 **Provenance of the circuity number (neither OSM nor Overture stores it).** Circuity is never a tracked attribute — it is always *derived* from a routable graph (e.g. `osmnx.stats.circuity_avg()` compares network path-distance to straight-line). V1 does **not** compute per-building circuity, because that needs the V2 road graph + routing — which would defeat the proxy's purpose (once you have real routed distance you don't need a circuity factor). The V1 slider default (~1.25) is **literature-grounded** (US metro circuity ~1.2–1.3). *Optional Phase-0 polish:* run `osmnx.stats.circuity_avg()` on Pittsburgh's road network **once, offline**, to pick a Pittsburgh-calibrated default — that is a single scalar network statistic, **not** per-building routing, so it does not cross the no-routing guardrail.
 
@@ -292,7 +296,7 @@ nearest_bridge_ft      double    # distance to it (null if none — a meaningful
 poi_count              int       # whitelisted POIs assigned to this building (tenant density)
 ```
 
-**Resolved (was an open decision):** `connector_geometry` **is included** in V1. The V1 connector is a 2-point straight line (centroid → nearest network point) — tiny next to the footprint polygon, so the "doubles file size" worry doesn't apply at City scope. It makes the screen legible (shows *where* the connector hits the network and *what* it crosses) and keeps the V1/V2 column contract intact (V2 fills the same column with a routed polyline). Render it **selectively** (hovered building + reachable set), never all ~150k lines at once — a draw-time choice, not a storage one.
+**Resolved (was an open decision):** `connector_geometry` **is included**. The V1 connector was a 2-point straight line (centroid → nearest network point); **V2 fills the same column with the routed polyline** (avg ~11 vertices), which added only **+19.7%** to the full-City `buildings.parquet` (measured) — the "doubles file size" worry doesn't bite at City scope. It makes the screen legible (shows *where* the connector reaches the corridor and *what* it crosses). Render it **selectively** (hovered building), never all ~116k lines at once — a draw-time choice, not a storage one. For the browser the routed polylines ship as a compact `connectors.parquet` (GeoJSON text, ~3.8 MB ZSTD) queried one building at a time on hover, so no spatial extension is needed in DuckDB-WASM.
 
 **`poi_count` definition:** each whitelisted POI (see category whitelist below) is assigned to its **single nearest building footprint within a max distance** (Phase-0-tuned, ~100–150 ft), and `poi_count` is the number assigned to that building. Nearest-building assignment is robust to Overture geocoding slop **and** guarantees one-POI-one-building (no double-counting, unlike a radius buffer). The category whitelist (which Overture place groups count as connectivity buyers) lives in **`docs/POI_CATEGORIES.md`** as the tunable source of truth.
 
@@ -501,7 +505,7 @@ Mirrors §2 one altitude up (rows appended to the §2 table). **Facts (baked off
 
 ### 14.10 The V1/V2 contract property
 
-`cells_r{8,9}.parquet` is a **pure function of `buildings.parquet`** (see §3 inheritance property). The cell view upgrades to V2 routed distances on a plain rebuild — a data swap at both altitudes, and a guarantee that a derived view cannot drift from V1.
+`cells_r{8,9}.parquet` is a **pure function of `buildings.parquet`** (see §3 inheritance property). **Realized in V2:** the cell view upgraded to routed distances on a plain `build/cells.py` rebuild with **zero cell-code change** — a data swap at both altitudes. The r8 hot set reorganized (51 of 252 scored cells, vs. the V1 straight-line set) purely from the new `conn_dist_median_ft` values, confirming a derived view cannot drift from the buildings it aggregates.
 
 ### 14.11 Display & interaction (honest by construction)
 

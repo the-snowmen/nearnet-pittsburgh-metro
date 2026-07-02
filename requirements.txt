@@ -12,8 +12,12 @@ pyproj>=3.6            # CRS transforms (4326/4269 -> 2272 ftUS)
 pandas>=1.4
 
 # Source fetchers
-osmnx>=2.0             # features_from_polygon (v2 API); roads/rail/bridges
+osmnx>=2.0             # features_from_polygon (v2 API); roads/rail/bridges + graph_from_polygon (V2 routing)
 pygris>=0.2            # Census TIGER PLACE clip boundary (GEOID 4261000)
+
+# V2 routed connector (build/routing.py) — offline shortest path over the street graph
+networkx>=3.0          # multi_source_dijkstra over the OSM graph (osmnx dependency; pinned explicit)
+scipy>=1.11            # cKDTree backing osmnx.distance.nearest_nodes on the projected graph
 
 # V1.5 cell layer (build/cells.py) — H3 tessellation + per-cell aggregation
 h3>=4,<5               # h3-py 4.x API (latlng_to_cell / cell_to_boundary / cell_to_latlng);

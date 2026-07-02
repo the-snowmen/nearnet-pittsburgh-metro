@@ -15,7 +15,8 @@ import type { ExpressionSpecification } from "maplibre-gl";
 
 export interface Sliders {
   costPerFt: number; // $/ft of connector
-  circuity: number; // straight-line -> road-detour multiplier (1.0 .. ~1.4)
+  circuity: number; // V2: distance is already road-routed, so this is an optional slack
+                    // factor (default 1.0 = no double-count). Slider kept for sensitivity.
   boreCost: number; // fresh water crossing (no bridge)
   bridgeCost: number; // discounted water crossing where a bridge is available
   railCost: number; // rail crossing (bore under tracks)
@@ -27,9 +28,11 @@ export interface Sliders {
 
 // Literature-grounded / DESIGN §6.3 starting guesses. These mirror
 // build/config.py SAMPLE_SLIDERS (the values that validate the closing query).
+// V2: connector_distance_ft is REAL road-routed distance, so circuity defaults to
+// 1.0 (the detour it faked in V1 is now baked into the distance).
 export const DEFAULT_SLIDERS: Sliders = {
   costPerFt: 30,
-  circuity: 1.25,
+  circuity: 1.0,
   boreCost: 20000,
   bridgeCost: 5000,
   railCost: 25000,
@@ -53,7 +56,7 @@ export const PRESETS: Preset[] = [
     name: "Optimistic",
     hint: "cheap build, mostly aerial, bridges used",
     sliders: {
-      costPerFt: 18, circuity: 1.1, boreCost: 12000, bridgeCost: 3000,
+      costPerFt: 18, circuity: 1.0, boreCost: 12000, bridgeCost: 3000,
       railCost: 15000, interstateCost: 9000, arterialCost: 1500, useBridges: true,
     },
   },
@@ -61,7 +64,7 @@ export const PRESETS: Preset[] = [
     name: "Typical",
     hint: "literature-grounded midpoint (default)",
     sliders: {
-      costPerFt: 30, circuity: 1.25, boreCost: 20000, bridgeCost: 5000,
+      costPerFt: 30, circuity: 1.0, boreCost: 20000, bridgeCost: 5000,
       railCost: 25000, interstateCost: 15000, arterialCost: 3000, useBridges: true,
     },
   },
@@ -69,7 +72,7 @@ export const PRESETS: Preset[] = [
     name: "Conservative",
     hint: "costly build, hard bores, no bridge discount",
     sliders: {
-      costPerFt: 55, circuity: 1.35, boreCost: 35000, bridgeCost: 9000,
+      costPerFt: 55, circuity: 1.0, boreCost: 35000, bridgeCost: 9000,
       railCost: 45000, interstateCost: 28000, arterialCost: 6000, useBridges: false,
     },
   },

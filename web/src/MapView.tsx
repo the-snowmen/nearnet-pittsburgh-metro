@@ -11,6 +11,7 @@ import {
   fmtIndex,
   gapOutlineExpression,
 } from "./cell";
+import { getConnector } from "./duck";
 
 export type Altitude = "buildings" | "cells";
 
@@ -163,7 +164,9 @@ function cellPopupHTML(c: CellScore, s: CellSliders): string {
 
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
-// Build the centroid → corridor connector line from a feature's cx,cy → nx,ny props.
+// Straight-line FALLBACK connector from a feature's cx,cy → nx,ny props (nx,ny is
+// the corridor endpoint). Shown instantly on hover until the real routed polyline
+// (V2, fetched from connectors.parquet) resolves.
 function connectorFC(p: GeoJSON.GeoJsonProperties): GeoJSON.FeatureCollection {
   if (!p || p.nx == null || p.ny == null || p.cx == null || p.cy == null) return EMPTY_FC;
   return {
@@ -176,6 +179,16 @@ function connectorFC(p: GeoJSON.GeoJsonProperties): GeoJSON.FeatureCollection {
       },
     ],
   };
+}
+
+// Wrap a baked routed-connector GeoJSON geometry string (V2) into a FeatureCollection.
+function routedConnectorFC(gj: string): GeoJSON.FeatureCollection {
+  try {
+    const geom = JSON.parse(gj) as GeoJSON.Geometry;
+    return { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: geom }] };
+  } catch {
+    return EMPTY_FC;
+  }
 }
 
 export default function MapView({
@@ -266,7 +279,8 @@ export default function MapView({
       // when zoomed in. Both layers' features expose the same fact properties.
       map.addSource("points", { type: "vector", url: pm("points.pmtiles") });
       map.addSource("footprints", { type: "vector", url: pm("footprints.pmtiles") });
-      // Hovered building's connector to the corridor, built in JS from cx,cy → nx,ny.
+      // Hovered building's routed connector to the corridor (V2 polyline from
+      // connectors.parquet; straight cx,cy→nx,ny fallback until it resolves).
       map.addSource("hoverconn", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -349,7 +363,7 @@ export default function MapView({
         source: "bridges",
         paint: { "line-color": "#9b5de5", "line-width": 3, "line-opacity": 0.8 },
       });
-      // Connector for the hovered building (built in JS from cx,cy → nx,ny).
+      // Connector for the hovered building (V2 routed polyline; straight-line fallback).
       map.addLayer({
         id: "connectors-l",
         type: "line",
@@ -448,12 +462,24 @@ export default function MapView({
     const hoverPopup = popupRef.current!;
     const pinPopup = pinPopupRef.current!;
 
-    // connector + footprint outline follow a building id (props carry the line ends)
+    // connector + footprint outline follow a building id. V2: show the straight-line
+    // fallback (from props) instantly, then upgrade to the real routed polyline once
+    // getConnector resolves — race-guarded so a stale fetch can't clobber a newer hover.
     const highlight = (id: string, props: GeoJSON.GeoJsonProperties) => {
       map.setFilter("buildings-outline", ["==", ["get", "building_id"], id || ""]);
-      (map.getSource("hoverconn") as maplibregl.GeoJSONSource).setData(
-        id ? connectorFC(props) : EMPTY_FC,
-      );
+      const src = map.getSource("hoverconn") as maplibregl.GeoJSONSource;
+      if (!id) {
+        src.setData(EMPTY_FC);
+        return;
+      }
+      src.setData(connectorFC(props)); // instant straight-line fallback
+      getConnector(id)
+        .then((gj) => {
+          if (!gj) return;
+          if (hoverIdRef.current !== id && pinnedIdRef.current !== id) return; // target moved on
+          src.setData(routedConnectorFC(gj));
+        })
+        .catch(() => {});
     };
     // when the cursor leaves, fall back to the pinned building (or nothing)
     const restoreToPinned = () =>

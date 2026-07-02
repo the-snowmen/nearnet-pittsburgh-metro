@@ -27,10 +27,13 @@ ships **none** of this Python. The build routes/joins offline and bakes facts; s
 ```
 build/
   config.py      # locked constants + Phase-0 tunable starting guesses (single source of truth)
-  sources.py     # Overture (DuckDB+httpfs) / OSM (OSMnx) / TIGER (pygris), clipped to the City polygon
-  geometry.py    # EPSG:2272 connectors, ST_Crosses-gated crossing counts, bridge proximity, POI assignment
+  sources.py     # Overture (DuckDB+httpfs) / OSM (OSMnx features + routable graph) / TIGER (pygris), clipped to the City polygon
+  routing.py     # V2: real road-following connector — multi-source Dijkstra over the OSM street graph to the corridor
+  geometry.py    # EPSG:2272 routed connectors, ST_Crosses-gated crossing counts, bridge proximity, POI assignment
+  cells.py       # V1.5: pure GROUP BY of buildings.parquet -> H3 opportunity-index cell layers
   measure.py     # Phase-0 tunables report -> data/phase0_report.{json,md}
   emit.py        # GeoParquet (geometry back to EPSG:4326) + §9 closing-query validation
+  export_web.py  # split GeoParquet -> browser assets (facts parquet, connectors, GeoJSON, PMTiles)
   precompute.py  # CLI orchestrator
 ```
 

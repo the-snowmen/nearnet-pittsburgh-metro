@@ -197,6 +197,41 @@ def fetch_osm_layers(poly_4326) -> dict[str, gpd.GeoDataFrame]:
 
 
 # --------------------------------------------------------------------------- #
+# OSM routable street graph — V2 routed connector (DESIGN.md §3/§5.4)
+# --------------------------------------------------------------------------- #
+def fetch_osm_graph(poly_4326):
+    """Routable drivable street graph (networkx MultiDiGraph, EPSG:4326).
+
+    Edges keep their `highway` tag so geometry.py can mark the `primary` corridor
+    nodes as routing targets. Separate from the `features_from_polygon` road layer:
+    that layer is display/barrier geometry; this is the topology fiber ROW routes over.
+    """
+    ox.settings.use_cache = True
+    ox.settings.cache_folder = str(C.CACHE_DIR / "osm_cache")
+    return ox.graph_from_polygon(poly_4326, network_type=C.ROUTING_NETWORK_TYPE, simplify=True)
+
+
+def _fetch_and_cache_graph(poly_4326):
+    """Fresh graph fetch + write to cache (fetch branch — mirrors _save for parquet layers).
+
+    Always refetches so a `--sample` run's small confluence graph never leaks into a
+    later `--full` run (same gotcha the parquet cache avoids by re-saving every fetch).
+    """
+    print("  fetching OSM road graph (osmnx graph_from_polygon) ...")
+    G = fetch_osm_graph(poly_4326)
+    ox.save_graphml(G, C.OSM_GRAPH_CACHE)
+    return G
+
+
+def _load_cached_graph(poly_4326):
+    """skip-fetch road graph: reuse data/cache/road_graph.graphml (fetch once if absent)."""
+    if C.OSM_GRAPH_CACHE.exists():
+        print("  [cache] loading road_graph.graphml")
+        return ox.load_graphml(C.OSM_GRAPH_CACHE)
+    return _fetch_and_cache_graph(poly_4326)
+
+
+# --------------------------------------------------------------------------- #
 # Clipping
 # --------------------------------------------------------------------------- #
 def _clip_lines(gdf: gpd.GeoDataFrame, clip_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -227,6 +262,7 @@ def load_layers(sample: int | None = None, skip_fetch: bool = False) -> dict:
     if skip_fetch and _cache_exists(*_LAYER_NAMES):
         print("  [skip-fetch] loading cached layers")
         layers = {n: _load(n) for n in _LAYER_NAMES}
+        layers["road_graph"] = _load_cached_graph(layers["clip"].geometry.union_all())
         layers["category_map"] = fetch_overture_category_map()
         return layers
 
@@ -268,6 +304,7 @@ def load_layers(sample: int | None = None, skip_fetch: bool = False) -> dict:
     for name in _LAYER_NAMES:
         _save(layers[name], name)
 
+    layers["road_graph"] = _fetch_and_cache_graph(region_poly)
     layers["category_map"] = fetch_overture_category_map()
     return layers
 

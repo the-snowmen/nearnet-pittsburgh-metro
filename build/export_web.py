@@ -93,19 +93,34 @@ def main() -> None:
     n_facts = con.execute(f"SELECT count(*) FROM read_parquet('{b}')").fetchone()[0]
     print(f"buildings.parquet (facts) : {n_facts:,} rows -> {facts_out.name}")
 
+    # 1b) V2 routed connector polylines, keyed by building_id, as GeoJSON text (no
+    #     spatial ext needed in the browser). Fetched one-at-a-time on hover to draw
+    #     the real road-following path; the straight cx,cy→nx,ny line is the fallback.
+    conn_out = WEB_DATA / "connectors.parquet"
+    con.execute(
+        f"COPY (SELECT building_id, "
+        f"ST_AsGeoJSON(ST_ReducePrecision(connector_geometry, 1e-6)) AS conn_geojson "
+        f"FROM read_parquet('{b}')) "
+        f"TO '{conn_out}' (FORMAT PARQUET, COMPRESSION ZSTD)"
+    )
+    print(f"connectors.parquet        : {n_facts:,} routed polylines -> {conn_out.name} "
+          f"({conn_out.stat().st_size / 1e6:.1f} MB)")
+
     # 2) Buildings → TWO GeoJSON inputs for tippecanoe (tiled below): footprint
     #    polygons (zoomed in) and centroid points (overview). Both carry the numeric
     #    facts as properties so the cost surface is colored by a MapLibre paint
-    #    expression, plus the connector endpoints (cx,cy → nx,ny) so the hovered
-    #    connector is drawn in JS — no separate 28 MB connectors layer needed.
+    #    expression, plus the connector's corridor endpoint (cx,cy → nx,ny) as the
+    #    straight-line hover FALLBACK shown until the real routed polyline (from
+    #    connectors.parquet) resolves. nx,ny = the LAST vertex (the corridor end) so
+    #    the fallback still points at the corridor, not V1's 2-point 2nd vertex.
     fact_select = (
         "building_id, in_range, "
         "CAST(ROUND(connector_distance_ft) AS INTEGER) AS connector_distance_ft, "
         "water_crossings, rail_crossings, interstate_crossings, arterial_crossings, "
         "bridge_available, "
         "ROUND(centroid_lon, 6) AS cx, ROUND(centroid_lat, 6) AS cy, "
-        "ROUND(ST_X(ST_PointN(connector_geometry, 2)), 6) AS nx, "
-        "ROUND(ST_Y(ST_PointN(connector_geometry, 2)), 6) AS ny"
+        "ROUND(ST_X(ST_PointN(connector_geometry, CAST(ST_NPoints(connector_geometry) AS INTEGER))), 6) AS nx, "
+        "ROUND(ST_Y(ST_PointN(connector_geometry, CAST(ST_NPoints(connector_geometry) AS INTEGER))), 6) AS ny"
     )
     bldg_props = [
         "building_id", "in_range", "connector_distance_ft",

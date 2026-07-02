@@ -82,6 +82,39 @@ export async function loadFacts(): Promise<Map<string, BuildingFacts>> {
   return m;
 }
 
+// --- V2 routed connector geometry (DESIGN §3/§5.4) ---------------------------
+// The hovered building's real road-following path, fetched one-at-a-time from a
+// compact GeoJSON-text parquet (no spatial extension needed). Additive & removable:
+// if connectors.parquet is absent, getConnector returns null and MapView falls back
+// to the straight cx,cy→nx,ny line.
+let connReady = false;
+const _connCache = new Map<string, string | null>();
+
+/** Register connectors.parquet + CREATE TABLE connectors. Throws if the file is absent. */
+export async function initConnectors(url: string): Promise<void> {
+  if (!db || !conn) throw new Error("DuckDB not initialised");
+  await db.registerFileURL("connectors.parquet", url, duckdb.DuckDBDataProtocol.HTTP, false);
+  await conn.query(
+    `CREATE OR REPLACE TABLE connectors AS SELECT * FROM read_parquet('connectors.parquet')`,
+  );
+  connReady = true;
+}
+
+/** Routed connector polyline (GeoJSON string) for one building, or null. Memoized. */
+export async function getConnector(buildingId: string): Promise<string | null> {
+  if (!connReady || !conn) return null;
+  const hit = _connCache.get(buildingId);
+  if (hit !== undefined) return hit;
+  const safe = buildingId.replace(/'/g, "''"); // Overture GERS ids are hex, but be safe
+  const res = await conn.query(
+    `SELECT conn_geojson FROM connectors WHERE building_id = '${safe}' LIMIT 1`,
+  );
+  const gj = (res.get(0) as any)?.conn_geojson;
+  const val = gj == null ? null : String(gj);
+  _connCache.set(buildingId, val);
+  return val;
+}
+
 /** Aggregate stats for the legend / readout (cheap, runs once per slider settle). */
 export interface CostStats {
   total: number;

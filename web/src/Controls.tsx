@@ -66,7 +66,7 @@ export default function Controls({ sliders: s, onChange }: Props) {
       </div>
 
       <Row
-        label="Circuity (straight-line → road detour)"
+        label="Extra slack (distance already road-routed)"
         value={s.circuity}
         min={1.0}
         max={1.4}

@@ -76,6 +76,11 @@ POI_WHITELIST_GROUPS = {
 CORRIDOR_HIGHWAY = {"primary"}                 # modeled fiber corridor (§4 escape hatch measured:
                                                # promoting secondary over-densifies — 76% in-range,
                                                # arterial-crossing story collapses — so kept sparse)
+
+# V2 routing (DESIGN.md §3/§5.4) — the connector is a REAL road-following path,
+# solved offline over an OSM street graph. network_type="drive" is the connected
+# drivable street network fiber ROW follows to reach the primary backbone.
+ROUTING_NETWORK_TYPE = "drive"
 INTERSTATE_HIGHWAY = {"motorway", "trunk"}     # -> interstate_crossings
 ARTERIAL_HIGHWAY = {"secondary"}               # -> arterial_crossings
 ALL_HIGHWAY = CORRIDOR_HIGHWAY | INTERSTATE_HIGHWAY | ARTERIAL_HIGHWAY
@@ -111,7 +116,8 @@ SNAP_GRID_FT = 0.01                            # snap-to-grid so a true crossing
 # prove the contract executes over the baked facts.
 # --------------------------------------------------------------------------- #
 SAMPLE_SLIDERS = {
-    "circuity": 1.25,        # straight-line -> road-detour factor (literature ~1.2-1.3, DESIGN.md §6.2)
+    "circuity": 1.0,         # V2: distance is ROUTED (road-following), so the detour factor is
+                             # vestigial. 1.0 = no double-count; slider stays for slack sensitivity (§6.2).
     "cost_per_ft": 30.0,
     "bore_cost": 20000.0,    # fresh barrier crossing
     "bridge_cost": 5000.0,   # discounted crossing where a bridge is available
@@ -203,6 +209,7 @@ BUILDING_COLUMNS = [
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
 CACHE_DIR = DATA_DIR / "cache"        # raw fetched layers (--skip-fetch reuses these)
+OSM_GRAPH_CACHE = CACHE_DIR / "road_graph.graphml"  # V2 routable street graph (osmnx)
 OUT_BUILDINGS = DATA_DIR / "buildings.parquet"
 OUT_NETWORK = DATA_DIR / "network.parquet"
 OUT_BRIDGES = DATA_DIR / "bridges.parquet"

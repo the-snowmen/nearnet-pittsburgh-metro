@@ -15,6 +15,7 @@ import {
   initDuck,
   loadFacts,
   costStats,
+  initConnectors,
   initCells,
   loadCellStats,
   scoreCells,
@@ -32,6 +33,7 @@ const CELL_URLS: Record<CellRes, string> = {
   9: url("data/cells_r9.parquet"),
 };
 const CELL_STATS_URL = url("data/cell_stats.parquet");
+const CONNECTORS_URL = url("data/connectors.parquet");
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -66,6 +68,12 @@ export default function App() {
         console.error(e);
         setError(String(e));
         return;
+      }
+      // V2 routed connectors are additive: a failure leaves the straight-line hover fallback.
+      try {
+        await initConnectors(CONNECTORS_URL);
+      } catch (e) {
+        console.warn("routed connectors unavailable (straight-line fallback):", e);
       }
       // Cell layer is additive: a failure here leaves the V1 screen fully working.
       try {
@@ -162,9 +170,9 @@ export default function App() {
             screening estimate over open data.
           </p>
           <p className="nn-honesty">
-            Modeled corridor from major-arterial right-of-way. Straight-line
-            distance × circuity is a <b>lower-bound screen</b>, not a build cost.
-            No real fiber or company data.
+            Modeled corridor from major-arterial right-of-way. Distance is{" "}
+            <b>road-routed</b> — an offline shortest path to the corridor, a
+            screening estimate, not a build cost. No real fiber or company data.
           </p>
         </header>
 
