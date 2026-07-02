@@ -137,12 +137,15 @@ export interface CostTerm {
 export function breakdown(f: BuildingFacts, s: Sliders): { terms: CostTerm[]; total: number } {
   const terms: CostTerm[] = [];
 
-  const distCost = f.connector_distance_ft * s.circuity * s.costPerFt;
+  // Popup DISPLAY foots: compute this term from the rounded distance the popup
+  // shows, so "ft × circuity × $/ft" equals the printed total. The SQL twin
+  // (buildCostSQL) and paint twin (costExpression) keep FULL precision — they
+  // drive the reachable count + map color; only this displayed term rounds.
+  const shownFt = Math.round(f.connector_distance_ft);
+  const distCost = shownFt * s.circuity * s.costPerFt;
   terms.push({
     label: "Connector",
-    detail: `${Math.round(f.connector_distance_ft).toLocaleString()} ft × ${s.circuity.toFixed(
-      2,
-    )} circuity × $${s.costPerFt}/ft`,
+    detail: `${shownFt.toLocaleString()} ft × ${s.circuity.toFixed(2)} circuity × $${s.costPerFt}/ft`,
     cost: distCost,
   });
 

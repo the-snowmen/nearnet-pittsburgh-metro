@@ -20,7 +20,7 @@ arithmetic over baked facts.
 - **`in_range`** buildings beyond the plausible service distance gray out
   (never silently dropped).
 - **Honesty framing throughout** — "modeled corridor", "lower-bound screen",
-  "not a build cost", no real fiber/company data.
+  "not a build cost", no real fiber or operator data.
 
 ## Architecture (browser data shapes)
 

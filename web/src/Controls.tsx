@@ -1,5 +1,7 @@
+import { useId, type CSSProperties } from "react";
 import type { Sliders } from "./cost";
 import { fmtUSD, PRESETS, matchesPreset } from "./cost";
+import Info from "./Info";
 
 interface Props {
   sliders: Sliders;
@@ -14,6 +16,7 @@ export function Row({
   step,
   fmt,
   onChange,
+  info,
 }: {
   label: string;
   value: number;
@@ -22,22 +25,33 @@ export function Row({
   step: number;
   fmt: (n: number) => string;
   onChange: (n: number) => void;
+  info?: string; // optional glossary key → renders a "?" tooltip next to the label
 }) {
+  const id = useId();
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  // --fill drives the WebKit track's filled portion (Firefox uses ::-moz-range-progress).
+  const trackStyle = { "--fill": `${pct}%` } as CSSProperties;
   return (
-    <label className="nn-slider">
+    <div className="nn-slider">
       <div className="nn-slider-top">
-        <span>{label}</span>
+        <span className="nn-slider-label">
+          <label htmlFor={id}>{label}</label>
+          {info && <Info term={info} />}
+        </span>
         <b>{fmt(value)}</b>
       </div>
       <input
+        id={id}
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
+        aria-valuetext={fmt(value)}
+        style={trackStyle}
         onChange={(e) => onChange(Number(e.target.value))}
       />
-    </label>
+    </div>
   );
 }
 
@@ -63,10 +77,12 @@ export default function Controls({ sliders: s, onChange }: Props) {
             );
           })}
         </div>
+        <div className="nn-preset-hint">Presets set the cost model; the budget threshold is yours.</div>
       </div>
 
       <Row
         label="Extra slack (distance already road-routed)"
+        info="circuity"
         value={s.circuity}
         min={1.0}
         max={1.4}

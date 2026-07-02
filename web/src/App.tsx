@@ -3,6 +3,8 @@ import MapView, { type Altitude } from "./MapView";
 import Controls from "./Controls";
 import CellControls from "./CellControls";
 import CellTable from "./CellTable";
+import Info from "./Info";
+import OnboardingCue from "./OnboardingCue";
 import { DEFAULT_SLIDERS, fmtUSD, type Sliders, type BuildingFacts } from "./cost";
 import {
   DEFAULT_CELL_SLIDERS,
@@ -41,9 +43,21 @@ export default function App() {
   const [count, setCount] = useState(0);
   const [sliders, setSliders] = useState<Sliders>(DEFAULT_SLIDERS);
   const [stats, setStats] = useState<CostStats | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true); // mobile drawer (no-op on desktop)
+  // Desktop: open (toggle is display:none, so it can't be closed). Mobile (<720px):
+  // start collapsed so the first impression is the map, not a wall of sliders.
+  const [panelOpen, setPanelOpen] = useState(
+    () => typeof window === "undefined" || window.innerWidth >= 720,
+  );
   const factsRef = useRef<Map<string, BuildingFacts> | null>(null);
   const debounceRef = useRef<number | undefined>(undefined);
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Mark the closed mobile drawer `inert` so its sliders leave the tab order
+  // (set imperatively — `inert` isn't in the React 18 attribute types). Desktop
+  // keeps panelOpen=true, so this never fires there.
+  useEffect(() => {
+    panelRef.current?.toggleAttribute("inert", !panelOpen);
+  }, [panelOpen]);
 
   // --- V1.5 cell-layer state (all inert until the files load) ---------------
   const [cellsAvailable, setCellsAvailable] = useState(false);
@@ -160,19 +174,24 @@ export default function App() {
       >
         {panelOpen ? "✕ Close" : "☰ Controls"}
       </button>
-      <aside id="nn-panel" className={"nn-panel" + (panelOpen ? " open" : "")}>
+      <aside
+        ref={panelRef}
+        id="nn-panel"
+        className={"nn-panel" + (panelOpen ? " open" : "")}
+      >
         <header className="nn-head">
           <h1>
-            near-net · Pittsburgh <span className="nn-ver">v{__APP_VERSION__}</span>
+            near-net <span className="nn-city">· Pittsburgh</span>{" "}
+            <span className="nn-ver">v{__APP_VERSION__}</span>
           </h1>
-          <p className="nn-tag">
-            A client-side fiber <b>near-net proximity screen</b> — a tunable
-            screening estimate over open data.
+          <p className="nn-lead">
+            See roughly what it&rsquo;d cost to connect any Pittsburgh building to a modeled
+            network corridor — then drag the sliders to test the assumptions.
           </p>
           <p className="nn-honesty">
             Modeled corridor from major-arterial right-of-way. Distance is{" "}
             <b>road-routed</b> — an offline shortest path to the corridor, a
-            screening estimate, not a build cost. No real fiber or company data.
+            screening estimate, not a build cost. No real fiber or operator data.
           </p>
         </header>
 
@@ -211,18 +230,19 @@ export default function App() {
                 </button>
               </div>
             )}
-            <div className="nn-stat">
+            <div className="nn-stat" role="status" aria-live="polite" aria-atomic="true">
               {ready && stats ? (
                 <>
-                  <div className="nn-stat-big">
+                  <div className="nn-stat-big" key={stats.reachable}>
                     {stats.reachable.toLocaleString()}
-                    <span> reachable</span>
+                    <span>reachable</span>
                   </div>
                   <div className="nn-stat-sub">
                     of {stats.inRange.toLocaleString()} in-range ·{" "}
                     {count.toLocaleString()} buildings total · within{" "}
                     {fmtUSD(sliders.budget)}
                   </div>
+                  <div className="nn-stat-hint">reachable = in-range and within budget</div>
                 </>
               ) : (
                 <div className="nn-stat-sub">{error ? "—" : "Loading modeled facts…"}</div>
@@ -238,15 +258,16 @@ export default function App() {
                 <span>≥ {fmtUSD(sliders.budget)}</span>
               </div>
               <ul className="nn-legend-list">
-                <li><i className="sw" style={{ background: "#9aa0a6" }} /> beyond plausible distance (in_range = false)</li>
+                <li><i className="sw" style={{ background: "#9aa0a6" }} /> beyond range (~4,000 ft service distance)</li>
                 <li><i className="ln" style={{ background: "#1b2733" }} /> City of Pittsburgh extent (project clip)</li>
-                <li><i className="ln" style={{ background: "#0a9396" }} /> modeled fiber corridor (primary)</li>
+                <li><i className="ln" style={{ background: "#0a9396" }} /> modeled fiber corridor (primary) <Info term="corridor" /></li>
                 <li><i className="ln" style={{ background: "#9b5de5" }} /> bridge (potential lower-cost crossing)</li>
                 <li><i className="ln" style={{ background: "#3b82c4" }} /> water · <i className="ln" style={{ background: "#7a5c3e" }} /> rail · <i className="ln" style={{ background: "#e8833a" }} /> interstate · <i className="ln" style={{ background: "#d9b500" }} /> arterial</li>
               </ul>
               <p className="nn-foot">
-                Hover a building for the itemized screening estimate. Data: ©
-                OpenStreetMap, Overture Maps, USGS NHD, US Census TIGER.
+                Hover or tap a building for the itemized screening estimate. In-range ≤ ~4,000 ft
+                (0.76 mi); distances computed in EPSG:2272 (State Plane PA-South, US survey feet).
+                Data: © OpenStreetMap, Overture Maps, USGS NHD, US Census TIGER.
               </p>
             </div>
           </>
@@ -313,12 +334,12 @@ export default function App() {
               <p className="nn-foot">
                 A normalized weighted score over the modeled per-building facts, for gap
                 analysis. A screening <b>index</b>, not a cost. Scores depend on hexagon
-                size &amp; placement (MAUP) — H3 cells are near-uniform area with no
-                orientation bias; the <b>resolution is a modeling choice</b> (try r8 ⇄ r9).
-                Inherits every building-screen caveat (modeled corridor, straight-line
-                distance, proxy bridge) and adds aggregation on top — never more
-                authoritative than the dots it came from. POI = modeled tenant-density
-                from whitelisted Overture places, not customers or revenue.
+                size &amp; placement (MAUP <Info term="MAUP" />) — H3 <Info term="H3" /> cells are
+                near-uniform area with no orientation bias; the <b>resolution is a modeling
+                choice</b> (try r8 ⇄ r9). Inherits every building-screen caveat (modeled
+                corridor, road-routed connector distance, proxy bridge) and adds aggregation
+                on top — never more authoritative than the dots it came from. POI = modeled
+                tenant-density from whitelisted public Overture places, not customers or revenue.
               </p>
             </div>
 
@@ -340,6 +361,7 @@ export default function App() {
           drillCellIds={drillCellIds}
           onCellClick={onCellClick}
         />
+        {!cellMode && <OnboardingCue />}
       </main>
     </div>
   );

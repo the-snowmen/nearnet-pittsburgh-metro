@@ -6,7 +6,7 @@ Client-side fiber near-net proximity screen for Pittsburgh; DuckDB-WASM over sta
 
 A fully client-side web app that screens buildings near a **modeled** fiber corridor as
 candidate prospects. Sliders set cost assumptions; the map lights up which buildings are
-reachable within budget. Built entirely from open data — **no real fiber, no company data**
+reachable within budget. Built entirely from open data — **no real fiber, no operator data**
 (see the data-honesty discipline in [docs/DESIGN.md](docs/DESIGN.md)).
 
 - **Design (source of truth):** [docs/DESIGN.md](docs/DESIGN.md)

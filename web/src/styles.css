@@ -1,243 +1,531 @@
-:root {
-  --bg: #0f1419;
-  --panel: #161c24;
-  --panel-2: #1d2530;
-  --line: #2a3340;
-  --text: #e6e9ee;
-  --muted: #aab4c3;
-  --accent: #0a9396;
-  --good: #46b450;
-  --warn: #e8a33a;
-  --bad: #d96a6a;
+/* ============================================================================
+   near-net Pittsburgh — editorial (light "paper") design system.
+   ONE token layer (:root) is the shared contract for three "worlds":
+     A) the React panel   B) the map popups (HTML strings via .setHTML)
+     C) MapLibre-owned control DOM.
+   Popup (World B) class names are string literals in MapView.tsx — restyle
+   here, never rename. Map layer paint + legend swatches are the map↔legend
+   honesty contract — never retinted here (chrome only).
+   ============================================================================ */
+
+/* ---------------- self-hosted fonts (OFL, Vite-bundled from src/fonts) ------ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/inter-latin-wght.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/fraunces-latin-wght.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/fraunces-latin-wght-italic.woff2") format("woff2");
 }
 
+/* ---------------- design tokens (the shared contract) ---------------------- */
+:root {
+  /* surfaces — warm "paper", not pure white (the editorial tell) */
+  --bg: #ffffff;
+  --paper: #faf7f2;
+  --panel: #faf7f2;         /* alias kept for existing refs */
+  --panel-2: #f1ece3;       /* inset chips, table head, hover fills */
+  --ink: #1a1a1a;
+  --text: #1a1a1a;          /* alias kept */
+  --muted: #6b6459;         /* warm gray captions/labels */
+  --line: #e6e0d5;          /* hairline on paper */
+  --line-2: #cdc6b8;        /* stronger divider */
+
+  /* editorial accent (panel only; the map keeps teal as the corridor color) */
+  --accent: #b8360f;        /* burnt sienna */
+  --accent-weak: #f2e4da;   /* tint for active fills */
+  --accent-ink: #ffffff;
+
+  /* data-viz semantic — re-tuned for contrast on paper */
+  --good: #1a7f4b;
+  --warn: #9a6a04;
+  --bad: #c0392b;
+  --gap-red: #d1332c;
+
+  /* floats — popups + controls over the light basemap */
+  --float-bg: #ffffff;
+  --float-ink: #1a1a1a;
+  --float-line: #d9d2c6;
+  --float-shadow: 0 6px 24px rgba(40, 30, 15, 0.14), 0 1px 2px rgba(40, 30, 15, 0.10);
+
+  /* spacing (4px base) */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+
+  /* radii — restrained, near-square editorial */
+  --r-0: 2px;  --r-1: 4px;  --r-2: 6px;  --r-pill: 999px;
+
+  /* elevation */
+  --sh-1: 0 1px 2px rgba(40, 30, 15, 0.08);
+  --sh-2: 0 4px 14px rgba(40, 30, 15, 0.12);
+  --sh-focus: 0 0 0 3px rgba(184, 54, 15, 0.28);
+
+  /* type */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --fs-hero: 3.5rem;      /* 56px  — the stat number */
+  --fs-h1: 1.375rem;      /* 22px */
+  --fs-h2: 0.9375rem;     /* 15px */
+  --fs-lead: 0.9375rem;   /* 15px */
+  --fs-body: 0.844rem;    /* 13.5px */
+  --fs-num: 0.844rem;     /* 13.5px, tabular */
+  --fs-small: 0.719rem;   /* 11.5px */
+  --fs-eyebrow: 0.656rem; /* 10.5px, uppercase kicker */
+
+  /* motion */
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+  --dur-slow: 420ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* data ramps — single source (hues unchanged from the map legend contract) */
+  --ramp-cost: linear-gradient(90deg, #1a9850, #fee08b, #d73027);
+  --ramp-index: linear-gradient(90deg, #f2f0f7, #cbc9e2, #9e9ac8, #756bb1, #54278f);
+}
+
+/* ---------------- base ----------------------------------------------------- */
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .nn-app { display: flex; height: 100%; }
 
-/* ---------------- left panel ---------------- */
+/* ============================================================================
+   WORLD A — the React panel
+   ============================================================================ */
 .nn-panel {
-  width: 360px;
-  min-width: 360px;
+  width: 372px;
+  min-width: 372px;
   height: 100%;
   overflow-y: auto;
-  background: var(--panel);
-  border-right: 1px solid var(--line);
-  padding: 18px 18px 28px;
+  background: var(--paper);
+  border-right: 1px solid var(--line-2);
+  padding: var(--sp-5) var(--sp-5) var(--sp-6);
 }
-.nn-head h1 { font-size: 20px; margin: 0 0 6px; letter-spacing: 0.2px; }
+
+/* header */
+.nn-head { margin-bottom: var(--sp-4); }
+.nn-head h1 {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 var(--sp-2);
+}
+.nn-head h1 .nn-city { color: var(--muted); font-weight: 500; }
 .nn-ver {
-  font-size: 11px; font-weight: 600; color: var(--accent);
-  background: var(--panel-2); border: 1px solid var(--line);
-  border-radius: 999px; padding: 1px 7px; vertical-align: middle; margin-left: 4px;
-}
-.nn-tag { font-size: 13px; color: var(--text); margin: 0 0 8px; line-height: 1.45; }
-.nn-honesty {
-  font-size: 11.5px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-pill);
+  padding: 1px 8px;
+  vertical-align: middle;
+  margin-left: var(--sp-2);
+  text-transform: uppercase;
+}
+.nn-lead {
+  font-size: var(--fs-lead);
+  color: var(--ink);
   line-height: 1.5;
-  margin: 0 0 14px;
-  padding: 8px 10px;
-  background: var(--panel-2);
+  margin: 0 0 var(--sp-3);
+}
+.nn-tag { font-size: var(--fs-body); color: var(--muted); margin: 0 0 var(--sp-3); line-height: 1.5; }
+
+/* honesty note → editorial pull-quote (persona-praised; keep prominent) */
+.nn-honesty {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-small);
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-1) 0 var(--sp-1) var(--sp-3);
   border-left: 3px solid var(--accent);
-  border-radius: 4px;
 }
 .nn-error {
-  font-size: 12px; color: #fff; background: #7a2222;
-  padding: 8px 10px; border-radius: 4px; margin-bottom: 12px;
+  font-size: var(--fs-body); color: #7a1f1f; background: #fbeaea;
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-1);
+  border-left: 3px solid var(--bad); margin-bottom: var(--sp-3);
 }
 
+/* stat block — the hero number floats in whitespace, no box */
 .nn-stat {
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 16px;
+  border-top: 1px solid var(--line-2);
+  padding-top: var(--sp-4);
+  margin-bottom: var(--sp-5);
+  min-height: 84px;   /* reserve so a settled recompute never reflows */
 }
-.nn-stat-big { font-size: 30px; font-weight: 700; line-height: 1; color: var(--accent); }
-.nn-stat-big span { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 6px; }
-.nn-stat-sub { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.nn-stat-big {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: var(--fs-hero);
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.nn-stat-big span {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--fs-eyebrow); font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--muted); margin: var(--sp-1) 0 0;
+}
+.nn-stat-sub { font-size: var(--fs-small); color: var(--muted); margin-top: var(--sp-2); line-height: 1.5; }
+.nn-stat-hint { color: var(--muted); font-style: italic; }
 
-/* ---------------- sliders ---------------- */
-.nn-controls { display: flex; flex-direction: column; gap: 12px; }
+/* control groups */
+.nn-controls { display: flex; flex-direction: column; gap: var(--sp-3); }
 .nn-group-h {
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
-  color: var(--muted); margin-top: 8px; border-top: 1px solid var(--line); padding-top: 12px;
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.12em;
+  font-weight: 600; color: var(--muted);
+  margin-top: var(--sp-2); border-top: 1px solid var(--line); padding-top: var(--sp-3);
+  display: flex; align-items: center; gap: var(--sp-1);
 }
+
+/* ---- custom range slider (one block → every slider) ---- */
 .nn-slider { display: block; }
-.nn-slider-top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; }
-.nn-slider-top b { color: var(--accent); font-variant-numeric: tabular-nums; }
-.nn-slider input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.nn-slider-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: var(--fs-body); color: var(--muted); margin-bottom: var(--sp-1);
+}
+.nn-slider-top .nn-slider-label { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.nn-slider-top b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.nn-slider input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 22px; margin: 0;
+  background: transparent; cursor: pointer;
+}
+/* WebKit / Blink — track carries the fill via --fill (set inline by Row) */
+.nn-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: var(--r-pill);
+  background: linear-gradient(90deg,
+    var(--accent) 0 var(--fill, 0%), var(--line-2) var(--fill, 0%) 100%);
+}
+.nn-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; margin-top: -6px;
+  border-radius: var(--r-pill);
+  background: var(--paper); border: 2px solid var(--accent);
+  box-shadow: var(--sh-1);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+/* Firefox — native progress fill */
+.nn-slider input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: var(--r-pill); background: var(--line-2);
+}
+.nn-slider input[type="range"]::-moz-range-progress {
+  height: 4px; border-radius: var(--r-pill); background: var(--accent);
+}
+.nn-slider input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border: 2px solid var(--accent); border-radius: var(--r-pill);
+  background: var(--paper); box-shadow: var(--sh-1);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.nn-slider input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.14); }
+.nn-slider input[type="range"]:hover::-moz-range-thumb { transform: scale(1.14); }
+.nn-slider input[type="range"]:focus { outline: none; }
+.nn-slider input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--sh-focus); }
+.nn-slider input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: var(--sh-focus); }
+
+/* ---- custom checkbox ---- */
 .nn-toggle {
-  display: flex; align-items: center; gap: 8px; font-size: 12.5px; margin-top: 6px; cursor: pointer;
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-body); color: var(--ink); margin-top: var(--sp-2); cursor: pointer;
 }
-.nn-toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+.nn-toggle input[type="checkbox"] {
+  -webkit-appearance: none; appearance: none; margin: 0;
+  width: 17px; height: 17px; flex: none;
+  border: 1.5px solid var(--line-2); border-radius: var(--r-1);
+  background: var(--bg); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.nn-toggle input[type="checkbox"]:checked {
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 L5 8.6 L9.5 3.6' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat;
+  border-color: var(--accent);
+}
 
-/* ---------------- legend ---------------- */
-.nn-legend { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
-.nn-legend-h { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+/* ---- presets ---- */
+.nn-preset-group { margin-bottom: var(--sp-3); }
+.nn-presets { display: flex; gap: var(--sp-1); }
+.nn-preset {
+  flex: 1; padding: var(--sp-2) var(--sp-1); font-size: var(--fs-body); cursor: pointer;
+  background: var(--bg); color: var(--muted);
+  border: 1px solid var(--line-2); border-radius: var(--r-1);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.nn-preset:hover { border-color: var(--accent); background: var(--panel-2); }
+.nn-preset.active {
+  background: var(--accent-weak); color: var(--accent); border-color: var(--accent); font-weight: 600;
+}
+.nn-preset-hint { font-size: var(--fs-small); color: var(--muted); font-style: italic; margin-top: var(--sp-2); }
+
+/* ---- segmented controls (altitude / demand / normalize / grain) ----
+   self-contained chips (same idiom as presets → no JSX restructure needed) */
+.nn-seg { display: flex; align-items: center; gap: var(--sp-1); margin: var(--sp-3) 0; flex-wrap: wrap; }
+.nn-seg-label {
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); min-width: 58px; display: inline-flex; align-items: center; gap: var(--sp-1);
+}
+.nn-seg-btn {
+  flex: 1; min-width: 0; padding: var(--sp-2); font-size: var(--fs-body); cursor: pointer;
+  background: var(--bg); color: var(--muted);
+  border: 1px solid var(--line-2); border-radius: var(--r-1); white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.nn-seg-btn:hover { color: var(--ink); border-color: var(--accent); }
+.nn-seg-btn.active {
+  background: var(--accent-weak); color: var(--accent); border-color: var(--accent); font-weight: 600;
+}
+.nn-altitude { margin: var(--sp-1) 0 var(--sp-4); }
+.nn-altitude .nn-seg-btn { padding: var(--sp-2) var(--sp-3); }
+
+/* ---- legend ---- */
+.nn-legend { margin-top: var(--sp-5); border-top: 1px solid var(--line); padding-top: var(--sp-4); }
+.nn-legend-h {
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
+  color: var(--muted); margin-bottom: var(--sp-2); display: flex; align-items: center; gap: var(--sp-1);
+}
 .nn-ramp {
-  height: 12px; border-radius: 3px;
-  background: linear-gradient(to right, #1a9850, #fee08b, #d73027);
+  height: 10px; border-radius: var(--r-0);
+  background: var(--ramp-cost);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
-.nn-ramp-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 3px; }
-.nn-legend-list { list-style: none; padding: 0; margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
-.nn-legend-list li { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; flex-wrap: wrap; }
-.nn-legend-list i.sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
-.nn-legend-list i.ln { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
-.nn-foot { font-size: 10.5px; color: var(--muted); line-height: 1.5; margin-top: 10px; }
+.nn-cell-ramp {
+  height: 10px; border-radius: var(--r-0);
+  background: var(--ramp-index);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+.nn-ramp-labels {
+  display: flex; justify-content: space-between; font-size: var(--fs-eyebrow);
+  color: var(--muted); margin-top: var(--sp-1); font-variant-numeric: tabular-nums;
+}
+.nn-legend-list { list-style: none; padding: 0; margin: var(--sp-3) 0 0; font-size: var(--fs-small); color: var(--muted); }
+.nn-legend-list li { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-1); flex-wrap: wrap; }
+.nn-legend-list i.sw { width: 12px; height: 12px; border-radius: var(--r-0); display: inline-block; }
+.nn-legend-list i.ln { width: 14px; height: 3px; border-radius: var(--r-0); display: inline-block; }
+.nn-legend-note { font-weight: 600; color: var(--warn); text-transform: none; letter-spacing: 0; }
+.nn-foot { font-size: var(--fs-small); color: var(--muted); line-height: 1.6; margin-top: var(--sp-3); }
 
-/* ---------------- map ---------------- */
+/* drill-down chip */
+.nn-drill {
+  font-size: var(--fs-body); color: var(--ink); background: var(--panel-2);
+  border: 1px solid var(--accent); border-radius: var(--r-2); padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
+}
+.nn-drill code { color: var(--accent); font-size: var(--fs-small); }
+.nn-drill button {
+  margin-left: auto; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-small); cursor: pointer;
+  background: transparent; color: var(--muted); border: 1px solid var(--line-2); border-radius: var(--r-1);
+}
+.nn-drill button:hover { color: var(--ink); border-color: var(--accent); }
+
+/* ranked opportunity table */
+.nn-cell-table { margin-top: var(--sp-4); border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+.nn-cell-table-h {
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
+  color: var(--muted); margin-bottom: var(--sp-2);
+}
+.nn-cell-table-scroll { max-height: 288px; overflow-y: auto; border: 1px solid var(--line-2); border-radius: var(--r-2); }
+.nn-cell-table table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+.nn-cell-table th, .nn-cell-table td {
+  padding: var(--sp-1) var(--sp-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.nn-cell-table th:first-child, .nn-cell-table td:first-child { text-align: left; }
+.nn-cell-table thead th {
+  position: sticky; top: 0; background: var(--panel-2); color: var(--muted);
+  border-bottom: 1px solid var(--line-2); font-weight: 600;
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.06em;
+}
+.nn-cell-table th.sortable { cursor: pointer; user-select: none; }
+.nn-cell-table th.sortable:hover { color: var(--ink); }
+.nn-cell-table tbody tr { cursor: pointer; }
+.nn-cell-table tbody tr:nth-child(even) { background: rgba(40, 30, 15, 0.025); }
+.nn-cell-table tbody tr:hover { background: var(--accent-weak); }
+.nn-cell-table td.idx { color: var(--ink); font-weight: 700; }
+.nn-cell-table tbody tr.gap { box-shadow: inset 3px 0 0 var(--gap-red); }
+.nn-gap-badge {
+  display: inline-block; margin-right: var(--sp-1); padding: 0 var(--sp-1);
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em;
+  color: #fff; background: var(--gap-red); border-radius: var(--r-0); vertical-align: middle;
+}
+.nn-cell-table-empty, .nn-cell-table-note { font-size: var(--fs-small); color: var(--muted); padding: var(--sp-2) 2px; }
+.nn-cell-table-note { text-align: center; }
+
+/* ---- jargon "?" tooltip (Info.tsx) ---- */
+.nn-info { position: relative; display: inline-flex; }
+.nn-info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; padding: 0; margin: 0;
+  font-family: var(--font-sans); font-size: 10px; font-weight: 700; line-height: 1;
+  color: var(--muted); background: transparent;
+  border: 1px solid var(--line-2); border-radius: var(--r-pill); cursor: help;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.nn-info-btn:hover { color: var(--accent); border-color: var(--accent); }
+.nn-info-pop {
+  position: absolute; z-index: 40; left: 0; top: calc(100% + 6px);
+  width: max-content; max-width: 240px;
+  font-size: var(--fs-small); font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;
+  color: var(--float-ink); background: var(--float-bg);
+  border: 1px solid var(--float-line); border-radius: var(--r-2);
+  box-shadow: var(--float-shadow); padding: var(--sp-2) var(--sp-3);
+}
+.nn-info-pop[data-pos="above"] { top: auto; bottom: calc(100% + 6px); }
+.nn-info-pop[data-align="right"] { left: auto; right: 0; }
+
+/* ---- onboarding cue (OnboardingCue.tsx) ---- */
+.nn-onboard {
+  position: absolute; z-index: 25; left: 50%; top: var(--sp-5); transform: translateX(-50%);
+  max-width: min(440px, 92vw);
+  background: var(--float-bg); color: var(--ink);
+  border: 1px solid var(--float-line); border-radius: var(--r-2);
+  box-shadow: var(--sh-2); padding: var(--sp-3) var(--sp-4);
+  display: flex; align-items: flex-start; gap: var(--sp-3);
+  font-size: var(--fs-body); line-height: 1.5;
+}
+.nn-onboard b { color: var(--ink); }
+.nn-onboard .nn-onboard-body { flex: 1; }
+.nn-onboard .nn-onboard-note { color: var(--muted); font-size: var(--fs-small); }
+.nn-onboard button {
+  flex: none; align-self: center; padding: var(--sp-1) var(--sp-3); cursor: pointer;
+  font-size: var(--fs-body); font-weight: 600; color: var(--accent-ink);
+  background: var(--accent); border: 1px solid var(--accent); border-radius: var(--r-1);
+}
+.nn-onboard button:hover { filter: brightness(1.06); }
+
+/* ============================================================================
+   map area + overlays (React-rendered chrome over the map)
+   ============================================================================ */
 .nn-main { flex: 1; position: relative; }
 .nn-map-wrap, .nn-map { position: absolute; inset: 0; }
 .nn-map-loading {
-  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-  background: rgba(22,28,36,0.92); color: var(--text); padding: 8px 16px;
-  border-radius: 6px; font-size: 13px; z-index: 5; border: 1px solid var(--line);
+  position: absolute; top: var(--sp-3); left: 50%; transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.94); color: var(--ink);
+  padding: var(--sp-2) var(--sp-4); border-radius: var(--r-2); font-size: var(--fs-body);
+  z-index: 5; border: 1px solid var(--float-line); box-shadow: var(--sh-2);
 }
 .nn-zoom {
   position: absolute; right: 10px; bottom: 28px; z-index: 5;
-  background: rgba(22,28,36,0.9); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px;
-  padding: 3px 9px; font-size: 12px; font-variant-numeric: tabular-nums;
-  letter-spacing: 0.3px; pointer-events: none; user-select: none;
+  background: rgba(255, 255, 255, 0.88); color: var(--muted);
+  border: 1px solid var(--float-line); border-radius: var(--r-1);
+  padding: 2px var(--sp-2); font-size: var(--fs-eyebrow); font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em; pointer-events: none; user-select: none;
 }
 
-/* ---------------- popup ---------------- */
+/* ============================================================================
+   WORLD B — map popups (styled here; HTML strings live in MapView.tsx)
+   ============================================================================ */
 .nn-popup .maplibregl-popup-content {
-  background: #11161d; color: var(--text); border: 1px solid var(--line);
-  border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  background: var(--float-bg); color: var(--float-ink);
+  border: 1px solid var(--float-line); border-radius: var(--r-2);
+  padding: var(--sp-3) var(--sp-4); box-shadow: var(--float-shadow);
+  font-family: var(--font-sans);
 }
-.nn-popup .maplibregl-popup-tip { border-top-color: #11161d; border-bottom-color: #11161d; }
-.nn-pop-h { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
-.nn-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin: 3px 0; }
-.nn-row em { color: var(--muted); font-style: normal; font-size: 10.5px; }
+.nn-popup .maplibregl-popup-tip { border-top-color: var(--float-bg); border-bottom-color: var(--float-bg); }
+.nn-pop-h { font-size: var(--fs-body); font-weight: 600; margin-bottom: var(--sp-2); }
+.nn-row { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-body); margin: 3px 0; }
+.nn-row em { color: var(--muted); font-style: normal; font-size: var(--fs-small); }
 .nn-row b { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.nn-total { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; font-weight: 700; }
-.nn-pop-meta { font-size: 10.5px; color: var(--muted); margin-top: 6px; }
-.nn-pop-foot { font-size: 10px; color: var(--muted); margin-top: 4px; font-style: italic; }
+.nn-total { border-top: 1px solid var(--line-2); margin-top: var(--sp-2); padding-top: var(--sp-2); font-weight: 700; }
+.nn-pop-meta { font-size: var(--fs-small); color: var(--muted); margin-top: var(--sp-2); }
+.nn-pop-foot { font-size: var(--fs-eyebrow); color: var(--muted); margin-top: var(--sp-1); font-style: italic; }
 .nn-good { color: var(--good); }
 .nn-warn { color: var(--warn); }
 .nn-bad { color: var(--bad); }
-/* pinned popup: make MapLibre's close button visible on the dark theme */
+.nn-idx { color: #6d54b0; font-variant-numeric: tabular-nums; }
+.nn-pop-gap { font-size: var(--fs-small); color: var(--warn); margin-top: var(--sp-2); line-height: 1.4; }
+
+/* ============================================================================
+   WORLD C — MapLibre-owned control DOM (theme via CSS only)
+   ============================================================================ */
+.maplibregl-ctrl-group {
+  background: var(--float-bg); border: 1px solid var(--float-line);
+  border-radius: var(--r-2); box-shadow: var(--float-shadow);
+}
+.maplibregl-ctrl-group button { color: var(--ink); }
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--line); }
+.maplibregl-ctrl-group button:hover { background: var(--panel-2); }
+.maplibregl-ctrl-scale {
+  background: rgba(255, 255, 255, 0.82); border-color: var(--float-line); color: var(--muted);
+}
 .nn-popup .maplibregl-popup-close-button {
   color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 7px; right: 2px; top: 2px;
 }
-.nn-popup .maplibregl-popup-close-button:hover { color: var(--text); background: transparent; }
+.nn-popup .maplibregl-popup-close-button:hover { color: var(--ink); background: transparent; }
 
-/* ---------------- presets ---------------- */
-.nn-preset-group { margin-bottom: 14px; }
-.nn-presets { display: flex; gap: 6px; }
-.nn-preset {
-  flex: 1; padding: 7px 6px; font-size: 12px; cursor: pointer;
-  background: var(--panel-2); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px;
-}
-.nn-preset:hover { border-color: var(--accent); }
-.nn-preset.active {
-  background: var(--accent); color: #052e2d; border-color: var(--accent); font-weight: 600;
-}
-
-/* ---------------- mobile drawer toggle ---------------- */
-.nn-panel-toggle {
-  display: none; /* shown only on narrow screens (media query) */
-  position: fixed; top: 10px; right: 10px; z-index: 30;
-  background: var(--panel); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px;
-  padding: 8px 12px; font-size: 13px; cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-}
-
-/* ---------------- accessibility: focus ---------------- */
+/* focus — teal→sienna ring; range thumb rings itself (excluded here) */
 .nn-app button:focus-visible,
-.nn-app input:focus-visible,
 .nn-app a:focus-visible,
+.nn-app input:not([type="range"]):focus-visible,
 .maplibregl-ctrl button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ---------------- V1.5 cell layer ---------------- */
-/* segmented toggles (altitude / demand / normalize / resolution) */
-.nn-seg { display: flex; align-items: center; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
-.nn-seg-label { font-size: 11px; color: var(--muted); min-width: 62px; }
-.nn-seg-btn {
-  flex: 1; min-width: 0; padding: 6px 8px; font-size: 12px; cursor: pointer;
-  background: var(--panel-2); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px; white-space: nowrap;
+/* ============================================================================
+   responsive — panel becomes a drawer
+   ============================================================================ */
+/* base rule MUST precede the media query: equal specificity → source order wins */
+.nn-panel-toggle {
+  display: none; /* shown only under the mobile media query below */
+  position: fixed; top: 10px; right: 10px; z-index: 30;
+  background: var(--float-bg); color: var(--ink);
+  border: 1px solid var(--float-line); border-radius: var(--r-2);
+  padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); cursor: pointer;
+  box-shadow: var(--sh-2);
 }
-.nn-seg-btn:hover { border-color: var(--accent); }
-.nn-seg-btn.active { background: var(--accent); color: #052e2d; border-color: var(--accent); font-weight: 600; }
-.nn-altitude { margin: 4px 0 14px; }
-.nn-altitude .nn-seg-btn { padding: 8px; }
-
-/* purple index ramp — a DIFFERENT family from the green→red cost ramp */
-.nn-cell-ramp {
-  height: 12px; border-radius: 3px;
-  background: linear-gradient(to right, #f2f0f7, #cbc9e2, #9e9ac8, #756bb1, #54278f);
-}
-.nn-legend-note { font-weight: 400; color: var(--warn); }
-
-/* drill-down chip */
-.nn-drill {
-  font-size: 12px; color: var(--text); background: var(--panel-2);
-  border: 1px solid var(--accent); border-radius: 6px; padding: 7px 10px;
-  margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-}
-.nn-drill code { color: var(--accent); font-size: 11px; }
-.nn-drill button {
-  margin-left: auto; padding: 3px 9px; font-size: 11px; cursor: pointer;
-  background: transparent; color: var(--muted);
-  border: 1px solid var(--line); border-radius: 5px;
-}
-.nn-drill button:hover { color: var(--text); border-color: var(--accent); }
-
-/* ranked opportunity table */
-.nn-cell-table { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
-.nn-cell-table-h { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-.nn-cell-table-scroll { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
-.nn-cell-table table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-.nn-cell-table th, .nn-cell-table td { padding: 5px 8px; text-align: right; white-space: nowrap; }
-.nn-cell-table th:first-child, .nn-cell-table td:first-child { text-align: left; }
-.nn-cell-table thead th {
-  position: sticky; top: 0; background: var(--panel-2); color: var(--muted);
-  border-bottom: 1px solid var(--line); font-weight: 600;
-}
-.nn-cell-table th.sortable { cursor: pointer; user-select: none; }
-.nn-cell-table th.sortable:hover { color: var(--text); }
-.nn-cell-table tbody tr { cursor: pointer; border-bottom: 1px solid var(--line); }
-.nn-cell-table tbody tr:hover { background: var(--panel-2); }
-.nn-cell-table td.idx { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 600; }
-.nn-cell-table td { font-variant-numeric: tabular-nums; }
-.nn-cell-table tbody tr.gap { box-shadow: inset 2px 0 0 #e63946; }
-.nn-gap-badge {
-  display: inline-block; margin-right: 5px; padding: 0 5px; font-size: 9.5px; font-weight: 700;
-  color: #fff; background: #e63946; border-radius: 3px; vertical-align: middle;
-}
-.nn-cell-table-empty, .nn-cell-table-note { font-size: 11px; color: var(--muted); padding: 8px 2px; }
-.nn-cell-table-note { text-align: center; }
-
-/* cell popup extras */
-.nn-idx { color: #b49be0; font-variant-numeric: tabular-nums; }
-.nn-pop-gap { font-size: 10.5px; color: var(--warn); margin-top: 6px; line-height: 1.4; }
-
-/* ---------------- responsive: panel becomes a drawer ---------------- */
 @media (max-width: 720px) {
   .nn-panel-toggle { display: inline-flex; align-items: center; }
   .nn-panel {
     position: absolute; z-index: 20; top: 0; left: 0; bottom: 0; height: 100%;
-    width: 86%; max-width: 360px; min-width: 0;
+    width: 88%; max-width: 372px; min-width: 0;
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
-    box-shadow: 2px 0 18px rgba(0, 0, 0, 0.55);
+    transition: transform var(--dur-med) var(--ease);
+    box-shadow: 2px 0 18px rgba(40, 30, 15, 0.22);
   }
   .nn-panel.open { transform: translateX(0); }
-  /* keep the toggle clear of the map's nav controls (top-left) */
   .maplibregl-ctrl-top-left { top: 4px; }
+}
+
+/* ============================================================================
+   motion — entrance stagger + hero settle (reduced-motion safe)
+   ============================================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes nn-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes nn-settle { from { opacity: 0.4; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+  .nn-panel .nn-head { animation: nn-fade-up var(--dur-med) var(--ease) both; }
+  .nn-panel .nn-stat { animation: nn-fade-up var(--dur-med) var(--ease) 40ms both; }
+  .nn-panel .nn-controls { animation: nn-fade-up var(--dur-med) var(--ease) 80ms both; }
+  .nn-panel .nn-legend { animation: nn-fade-up var(--dur-med) var(--ease) 120ms both; }
+  .nn-stat-big { animation: nn-settle var(--dur-fast) var(--ease) both; }
+  .nn-info-pop { animation: nn-fade-up var(--dur-fast) var(--ease) both; }
+  .nn-onboard { animation: nn-fade-up var(--dur-med) var(--ease) both; }
 }

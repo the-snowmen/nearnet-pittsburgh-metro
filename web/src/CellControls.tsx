@@ -3,6 +3,7 @@
 // only in the Cell-overview altitude. No `$`/cost vocabulary (guardrail #5).
 
 import { Row } from "./Controls";
+import Info from "./Info";
 import type { CellSliders, NormMode, DemandMode } from "./cell";
 import { fmtIndex } from "./cell";
 
@@ -70,7 +71,9 @@ export default function CellControls({ sliders: s, onChange, domain }: Props) {
       </div>
 
       <div className="nn-seg" role="group" aria-label="Normalization method">
-        <span className="nn-seg-label">Normalize</span>
+        <span className="nn-seg-label">
+          Normalize <Info term="z-score" />
+        </span>
         {(["z", "minmax"] as NormMode[]).map((m) => (
           <button
             key={m}
