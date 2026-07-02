@@ -159,6 +159,31 @@ SAMPLE_CELL_SLIDERS = {
     "demand_mode": "density",     # 'density' (default) | 'mass'
 }
 
+# cell_stats.parquet distribution features -> the cell-column expression each stat is
+# computed over. FACT-DERIVATION map (which column, not what weight) — the weights /
+# normalization stay browser opinions (§14.9). One stats row per (h3_res, feature).
+# Both `poi_density` AND `poi_count_sum` are baked so the browser mass<->density toggle
+# (SAMPLE_CELL_SLIDERS["demand_mode"]) has a matching mean/std for either axis.
+CELL_STAT_SOURCE = {
+    "poi_density":   "CAST(poi_count_sum AS double) / NULLIF(building_count, 0)",  # demand DENSITY (default)
+    "poi_count_sum": "CAST(poi_count_sum AS double)",                              # demand MASS (toggle)
+    "dist_median":   "conn_dist_median_ft",                                        # reachability axis
+    "barrier_mean":  "total_crossings_mean",                                       # barrier axis (per-building)
+    "bldg":          "CAST(building_count AS double)",                             # size axis
+}
+
+# cells_r{res}.parquet column order (DESIGN.md §14.5) — twin of BUILDING_COLUMNS.
+# `geometry` is the CLIPPED hex boundary (4326); dropped in the facts-only web parquet.
+CELL_COLUMNS = [
+    "cell_id", "h3_res", "geometry", "centroid_lon", "centroid_lat",
+    "building_count", "in_range_count", "poi_count_sum",
+    "conn_dist_median_ft", "conn_dist_p25_ft", "conn_dist_min_ft", "conn_dist_mean_ft",
+    "water_crossings_sum", "rail_crossings_sum", "interstate_crossings_sum", "arterial_crossings_sum",
+    "total_crossings_mean", "bridge_available_count", "clipped_area_frac",
+]
+# Facts-only projection for DuckDB-WASM (drop geometry), twin of the buildings split.
+CELL_FACT_COLUMNS = [c for c in CELL_COLUMNS if c != "geometry"]
+
 # --------------------------------------------------------------------------- #
 # Output schema — buildings.parquet column order (DESIGN.md §9)
 # --------------------------------------------------------------------------- #
@@ -187,6 +212,8 @@ REPORT_MD = DATA_DIR / "phase0_report.md"
 # V1.5 cell layer outputs (Phase B — written by build/cells.py after buildings.parquet)
 OUT_CELLS = {res: DATA_DIR / f"cells_r{res}.parquet" for res in H3_RESOLUTIONS}
 OUT_CELL_STATS = DATA_DIR / "cell_stats.parquet"
+REPORT05_JSON = DATA_DIR / "phase05_report.json"   # Phase-0.5 cell-layer measurement
+REPORT05_MD = DATA_DIR / "phase05_report.md"
 
 
 def ensure_dirs() -> None:

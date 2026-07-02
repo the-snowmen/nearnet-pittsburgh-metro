@@ -163,6 +163,70 @@ body {
   outline-offset: 2px;
 }
 
+/* ---------------- V1.5 cell layer ---------------- */
+/* segmented toggles (altitude / demand / normalize / resolution) */
+.nn-seg { display: flex; align-items: center; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+.nn-seg-label { font-size: 11px; color: var(--muted); min-width: 62px; }
+.nn-seg-btn {
+  flex: 1; min-width: 0; padding: 6px 8px; font-size: 12px; cursor: pointer;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 6px; white-space: nowrap;
+}
+.nn-seg-btn:hover { border-color: var(--accent); }
+.nn-seg-btn.active { background: var(--accent); color: #052e2d; border-color: var(--accent); font-weight: 600; }
+.nn-altitude { margin: 4px 0 14px; }
+.nn-altitude .nn-seg-btn { padding: 8px; }
+
+/* purple index ramp — a DIFFERENT family from the green→red cost ramp */
+.nn-cell-ramp {
+  height: 12px; border-radius: 3px;
+  background: linear-gradient(to right, #f2f0f7, #cbc9e2, #9e9ac8, #756bb1, #54278f);
+}
+.nn-legend-note { font-weight: 400; color: var(--warn); }
+
+/* drill-down chip */
+.nn-drill {
+  font-size: 12px; color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--accent); border-radius: 6px; padding: 7px 10px;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.nn-drill code { color: var(--accent); font-size: 11px; }
+.nn-drill button {
+  margin-left: auto; padding: 3px 9px; font-size: 11px; cursor: pointer;
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px;
+}
+.nn-drill button:hover { color: var(--text); border-color: var(--accent); }
+
+/* ranked opportunity table */
+.nn-cell-table { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.nn-cell-table-h { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.nn-cell-table-scroll { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
+.nn-cell-table table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.nn-cell-table th, .nn-cell-table td { padding: 5px 8px; text-align: right; white-space: nowrap; }
+.nn-cell-table th:first-child, .nn-cell-table td:first-child { text-align: left; }
+.nn-cell-table thead th {
+  position: sticky; top: 0; background: var(--panel-2); color: var(--muted);
+  border-bottom: 1px solid var(--line); font-weight: 600;
+}
+.nn-cell-table th.sortable { cursor: pointer; user-select: none; }
+.nn-cell-table th.sortable:hover { color: var(--text); }
+.nn-cell-table tbody tr { cursor: pointer; border-bottom: 1px solid var(--line); }
+.nn-cell-table tbody tr:hover { background: var(--panel-2); }
+.nn-cell-table td.idx { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 600; }
+.nn-cell-table td { font-variant-numeric: tabular-nums; }
+.nn-cell-table tbody tr.gap { box-shadow: inset 2px 0 0 #e63946; }
+.nn-gap-badge {
+  display: inline-block; margin-right: 5px; padding: 0 5px; font-size: 9.5px; font-weight: 700;
+  color: #fff; background: #e63946; border-radius: 3px; vertical-align: middle;
+}
+.nn-cell-table-empty, .nn-cell-table-note { font-size: 11px; color: var(--muted); padding: 8px 2px; }
+.nn-cell-table-note { text-align: center; }
+
+/* cell popup extras */
+.nn-idx { color: #b49be0; font-variant-numeric: tabular-nums; }
+.nn-pop-gap { font-size: 10.5px; color: var(--warn); margin-top: 6px; line-height: 1.4; }
+
 /* ---------------- responsive: panel becomes a drawer ---------------- */
 @media (max-width: 720px) {
   .nn-panel-toggle { display: inline-flex; align-items: center; }

@@ -6,7 +6,7 @@ interface Props {
   onChange: (patch: Partial<Sliders>) => void;
 }
 
-function Row({
+export function Row({
   label,
   value,
   min,

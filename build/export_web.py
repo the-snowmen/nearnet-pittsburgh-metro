@@ -46,8 +46,13 @@ def _round_coords(obj):
     return obj
 
 
-def _dump_geojson(con: duckdb.DuckDBPyConnection, sql: str, props: list[str], out: Path) -> int:
-    """Run `sql` (must yield a `g` GeoJSON-string column + `props`), write a FeatureCollection."""
+def _dump_geojson(con: duckdb.DuckDBPyConnection, sql: str, props: list[str], out: Path,
+                  id_prop: str = "building_id") -> int:
+    """Run `sql` (must yield a `g` GeoJSON-string column + `props`), write a FeatureCollection.
+
+    `id_prop` (if present in `props`) becomes each Feature's top-level `id` so MapLibre
+    `promoteId` / `feature-state` can key on it (buildings -> building_id, cells -> cell_id).
+    """
     rows = con.execute(sql).fetchall()
     cols = [d[0] for d in con.description]
     gi = cols.index("g")
@@ -61,7 +66,7 @@ def _dump_geojson(con: duckdb.DuckDBPyConnection, sql: str, props: list[str], ou
         features.append(
             {
                 "type": "Feature",
-                "id": r[pidx["building_id"]] if "building_id" in pidx else None,
+                "id": r[pidx[id_prop]] if id_prop in pidx else None,
                 "properties": {p: r[pidx[p]] for p in props},
                 "geometry": geom,
             }
@@ -167,12 +172,58 @@ def main() -> None:
     (WEB_DATA / "boundary.geojson").write_text(json.dumps(boundary_fc, separators=(",", ":")))
     print(f"boundary.geojson          : City of Pittsburgh clip outline")
 
+    # 7.5) V1.5 cell layer (DESIGN.md §14) — additive & removable: skipped cleanly if the
+    #      cell files don't exist, so a V1-only build still exports without them.
+    _export_cells(con)
+
     con.close()
 
     # 8) Tile the two heavy building layers to PMTiles (the small layers stay GeoJSON).
     _build_tiles()
 
     print(f"\nWeb assets written to {WEB_DATA}")
+
+
+def _export_cells(con: duckdb.DuckDBPyConnection) -> None:
+    """V1.5 cell layer -> browser assets (DESIGN.md §14). Same split as buildings:
+    facts-only parquet for DuckDB-WASM + hex-geometry GeoJSON for MapLibre.
+
+    GeoJSON (not PMTiles) for the hexes: at ~260 (r8) / ~1,440 (r9) features the file is
+    tiny, and MapLibre `feature-state` needs a clean per-feature `promoteId: cell_id`
+    with no tile-boundary feature splitting.
+    """
+    any_cells = False
+    for res, src in config.OUT_CELLS.items():
+        if not src.exists():
+            continue
+        any_cells = True
+        # (a) facts-only parquet for DuckDB-WASM (drop geometry), twin of buildings.parquet.
+        fact_cols = ", ".join(config.CELL_FACT_COLUMNS)
+        con.execute(
+            f"COPY (SELECT {fact_cols} FROM read_parquet('{src}')) "
+            f"TO '{WEB_DATA / f'cells_r{res}.parquet'}' (FORMAT PARQUET, COMPRESSION ZSTD)"
+        )
+        # (b) hex geometry GeoJSON, cell_id promoted to Feature.id for feature-state.
+        #     Raw facts ride along as properties (ranked table + hover need no 2nd fetch);
+        #     the SCORE is computed live in the browser (§14.7).
+        n = _dump_geojson(
+            con,
+            f"SELECT cell_id, h3_res, building_count, poi_count_sum, "
+            f"conn_dist_median_ft, total_crossings_mean, clipped_area_frac, "
+            f"ROUND(centroid_lon, 6) AS clon, ROUND(centroid_lat, 6) AS clat, "
+            f"ST_AsGeoJSON(geometry) AS g FROM read_parquet('{src}')",
+            ["cell_id", "h3_res", "building_count", "poi_count_sum",
+             "conn_dist_median_ft", "total_crossings_mean", "clipped_area_frac", "clon", "clat"],
+            WEB_DATA / f"cells_r{res}.geojson",
+            id_prop="cell_id",
+        )
+        print(f"cells_r{res}.geojson         : {n:,} hexes")
+    # (c) cell_stats.parquet — copied verbatim for DuckDB-WASM normalization binding.
+    if any_cells and config.OUT_CELL_STATS.exists():
+        shutil.copy2(config.OUT_CELL_STATS, WEB_DATA / "cell_stats.parquet")
+        print("cell_stats.parquet        : copied")
+    if not any_cells:
+        print("cells                     : none found (V1-only build) — skipped")
 
 
 def _build_tiles() -> None:

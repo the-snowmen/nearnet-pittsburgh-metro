@@ -14,3 +14,8 @@ pandas>=1.4
 # Source fetchers
 osmnx>=2.0             # features_from_polygon (v2 API); roads/rail/bridges
 pygris>=0.2            # Census TIGER PLACE clip boundary (GEOID 4261000)
+
+# V1.5 cell layer (build/cells.py) — H3 tessellation + per-cell aggregation
+h3>=4,<5               # h3-py 4.x API (latlng_to_cell / cell_to_boundary / cell_to_latlng);
+                       # pin <5 — 4.x renamed the whole API from 3.x, a silent 5.x bump could break it.
+                       # Browser drill-down uses the h3-js npm port at the SAME major (web/package.json).

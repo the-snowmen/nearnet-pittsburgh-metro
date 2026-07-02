@@ -19,9 +19,9 @@ if __package__ in (None, ""):
     import sys
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from build import config as C, emit, geometry, measure, sources
+    from build import cells, config as C, emit, geometry, measure, sources
 else:
-    from . import config as C, emit, geometry, measure, sources
+    from . import cells, config as C, emit, geometry, measure, sources
 
 
 def main() -> None:
@@ -35,6 +35,9 @@ def main() -> None:
                     help="reuse cached source layers in data/cache/ (offline)")
     ap.add_argument("--measure-only", action="store_true",
                     help="run geometry + measure, skip GeoParquet emission")
+    ap.add_argument("--cells", action="store_true",
+                    help="V1.5: additionally aggregate buildings.parquet into H3 cell "
+                         "layers (additive; needs buildings.parquet on disk)")
     args = ap.parse_args()
 
     sample = args.sample  # None when --full or unset
@@ -62,6 +65,19 @@ def main() -> None:
     print("[4/4] measure  (data/phase0_report.{json,md})")
     rep = measure.report(built, reachable=reachable)
 
+    # V1.5 (§14): additive H3 cell layer. Gated behind --cells; runs off the emitted
+    # buildings.parquet on disk (the §14.2 ship-order gate — buildings.parquet first).
+    cell_out = None
+    if args.cells:
+        if not C.OUT_BUILDINGS.exists():
+            raise SystemExit(
+                f"--cells needs {C.OUT_BUILDINGS.name}; run an emit first "
+                f"(drop --measure-only, or run --full/--sample without --measure-only)."
+            )
+        print("[+cells] V1.5   (H3 aggregate — pure GROUP BY over buildings.parquet)")
+        cell_out = cells.build_cells()
+        measure.report_cells(cell_out)
+
     dt = time.time() - t0
     dpct = rep["connector_distance_ft"]["percentiles"]
     print("\n── Phase 0 summary ───────────────────────────────────────")
@@ -75,6 +91,14 @@ def main() -> None:
     if reachable is not None:
         print(f"  closing query          {reachable:,} reachable")
     print(f"  report                 {C.REPORT_MD}")
+    if cell_out is not None:
+        print("  ── V1.5 cells ────────────────────────────────────────")
+        for res, gdf in cell_out["cells"].items():
+            hot = cell_out["validation"][res]
+            below = int((gdf["building_count"] < C.CELL_MIN_BUILDINGS).sum())
+            print(f"  r{res:<20} {len(gdf):,} cells  ({below:,} < floor)  "
+                  f"scored hot-set={hot:,}")
+        print(f"  cell report            {C.REPORT05_MD}")
     print(f"  elapsed                {dt:.1f}s")
     print("──────────────────────────────────────────────────────────")
 

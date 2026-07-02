@@ -3,6 +3,16 @@ import maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import type { BuildingFacts, Sliders } from "./cost";
 import { breakdown, costColorExpression, costOpacityExpression, fmtUSD } from "./cost";
+import type { CellRes, CellScore, CellSliders } from "./cell";
+import {
+  cellBreakdown,
+  cellColorExpression,
+  cellOpacityExpression,
+  fmtIndex,
+  gapOutlineExpression,
+} from "./cell";
+
+export type Altitude = "buildings" | "cells";
 
 // Register the pmtiles:// protocol once so MapLibre can range-read the building tilesets.
 maplibregl.addProtocol("pmtiles", new Protocol().tile);
@@ -40,6 +50,14 @@ interface Props {
   ready: boolean;
   sliders: Sliders;
   facts: Map<string, BuildingFacts> | null;
+  // V1.5 cell layer (all no-ops while altitude === "buildings" / cells absent).
+  altitude: Altitude;
+  cellRes: CellRes;
+  cellScores: CellScore[] | null;
+  cellSliders: CellSliders;
+  colorDomain: [number, number];
+  drillCellIds: string[] | null;
+  onCellClick: (cellId: string) => void;
 }
 
 // Envelope of the City of Pittsburgh clip (fallback until boundary.geojson loads).
@@ -118,6 +136,31 @@ function popupHTML(fct: BuildingFacts, s: Sliders): string {
      </div>`;
 }
 
+// Cell hover breakout — the four index terms, honestly labeled (§14.11). The
+// index is UNITLESS (never dollars); gray cells are excluded, never "score 0".
+function cellPopupHTML(c: CellScore, s: CellSliders): string {
+  const { terms } = cellBreakdown(c, s);
+  const rows = terms
+    .map(
+      (t) =>
+        `<div class="nn-row"><span>${t.label}<br><em>${t.detail}</em></span><b>${t.contribution >= 0 ? "+" : ""}${t.contribution.toFixed(
+          2,
+        )}</b></div>`,
+    )
+    .join("");
+  const gap = c.is_gap
+    ? `<div class="nn-pop-gap">gap: high modeled demand + high reachability cost / barriers — screening candidate, not a confirmed prospect</div>`
+    : "";
+  return `<div class="nn-pop">
+       <div class="nn-pop-h">Opportunity index <b class="nn-idx">${fmtIndex(c.opportunity_index)}</b></div>
+       ${rows}
+       <div class="nn-row nn-total"><span>Index (Σ terms)</span><b>${fmtIndex(c.opportunity_index)}</b></div>
+       ${gap}
+       <div class="nn-pop-meta">${c.building_count.toLocaleString()} buildings · ${c.poi_count_sum.toLocaleString()} modeled POI signal</div>
+       <div class="nn-pop-foot">Unitless weighted screening index — <b>not dollars</b>. Click to drill into its buildings.</div>
+     </div>`;
+}
+
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 // Build the centroid → corridor connector line from a feature's cx,cy → nx,ny props.
@@ -135,7 +178,18 @@ function connectorFC(p: GeoJSON.GeoJsonProperties): GeoJSON.FeatureCollection {
   };
 }
 
-export default function MapView({ ready, sliders, facts }: Props) {
+export default function MapView({
+  ready,
+  sliders,
+  facts,
+  altitude,
+  cellRes,
+  cellScores,
+  cellSliders,
+  colorDomain,
+  drillCellIds,
+  onCellClick,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
@@ -148,10 +202,18 @@ export default function MapView({ ready, sliders, facts }: Props) {
   const pinnedPropsRef = useRef<GeoJSON.GeoJsonProperties>(null);
   const boundsRef = useRef<maplibregl.LngLatBoundsLike>(CITY_BOUNDS);
   const repaintTimer = useRef<number | undefined>(undefined);
+  // Cell-layer refs (read by event handlers without re-binding on every change).
+  const altitudeRef = useRef<Altitude>(altitude);
+  const cellSlidersRef = useRef<CellSliders>(cellSliders);
+  const cellScoreMapRef = useRef<Map<string, CellScore>>(new Map());
+  const onCellClickRef = useRef(onCellClick);
   const [zoom, setZoom] = useState<number>(ZOOM);
 
   slidersRef.current = sliders;
   factsRef.current = facts;
+  altitudeRef.current = altitude;
+  cellSlidersRef.current = cellSliders;
+  onCellClickRef.current = onCellClick;
 
   // --- one-time map construction -------------------------------------------
   useEffect(() => {
@@ -307,6 +369,39 @@ export default function MapView({ ready, sliders, facts }: Props) {
           "line-dasharray": [3, 2],
         },
       });
+      // --- V1.5 opportunity-index cell layer (§14.11) — hidden until opted in. ---
+      // Hex geometry loads once with promoteId "cell_id" so each scoring result
+      // sets {score,hot,gap} per cell via feature-state; the fill reads them.
+      map.addSource("cells", {
+        type: "geojson",
+        data: DATA + `cells_r${cellRes}.geojson`,
+        promoteId: "cell_id",
+      });
+      map.addLayer({
+        id: "cells-fill",
+        type: "fill",
+        source: "cells",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": cellColorExpression(colorDomain),
+          "fill-opacity": cellOpacityExpression(),
+        },
+      });
+      map.addLayer({
+        id: "cells-outline",
+        type: "line",
+        source: "cells",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#6a5acd", "line-width": 0.5, "line-opacity": 0.35 },
+      });
+      map.addLayer({
+        id: "cells-gap",
+        type: "line",
+        source: "cells",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#e63946", "line-width": 1.8, "line-opacity": gapOutlineExpression() },
+      });
+
       // Real bounds for the re-center button (fallback to the envelope on failure).
       fetch(DATA + "boundary.geojson")
         .then((r) => r.json())
@@ -318,6 +413,7 @@ export default function MapView({ ready, sliders, facts }: Props) {
       loadedRef.current = true;
       repaintCost();
       attachHover();
+      attachCellHover();
     });
   }, []);
 
@@ -421,6 +517,117 @@ export default function MapView({ ready, sliders, facts }: Props) {
       if (ev.key === "Escape") pinPopup.remove();
     });
   }
+
+  // --- V1.5 cell layer: feature-state, hover, and altitude wiring ------------
+
+  // Push the latest scoring result into MapLibre feature-state. Cells NOT in the
+  // result (below the min-buildings floor) get no state → the paint falls through
+  // to neutral gray (never "score 0"). MapLibre clears feature-state on a source
+  // reload, so this is re-run after any r8⇄r9 setData too.
+  function applyCellState(scores: CellScore[] | null, threshold: number) {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current || !map.getSource("cells")) return;
+    map.removeFeatureState({ source: "cells" });
+    const m = new Map<string, CellScore>();
+    for (const c of scores ?? []) {
+      m.set(c.cell_id, c);
+      map.setFeatureState(
+        { source: "cells", id: c.cell_id },
+        { scored: true, score: c.opportunity_index, hot: c.opportunity_index >= threshold, gap: c.is_gap },
+      );
+    }
+    cellScoreMapRef.current = m;
+  }
+
+  function attachCellHover() {
+    const map = mapRef.current!;
+    const hoverPopup = popupRef.current!;
+    const onMove = (e: maplibregl.MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      map.getCanvas().style.cursor = "pointer";
+      const c = cellScoreMapRef.current.get(String(f.id));
+      if (c) hoverPopup.setLngLat(e.lngLat).setHTML(cellPopupHTML(c, cellSlidersRef.current)).addTo(map);
+    };
+    const onLeave = () => {
+      map.getCanvas().style.cursor = "";
+      hoverPopup.remove();
+    };
+    const onClick = (e: maplibregl.MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const cellId = String(f.id);
+      const c = cellScoreMapRef.current.get(cellId);
+      if (c) map.flyTo({ center: [c.centroid_lon, c.centroid_lat], zoom: 14, duration: 800 });
+      onCellClickRef.current(cellId);
+    };
+    map.on("mousemove", "cells-fill", onMove);
+    map.on("mouseleave", "cells-fill", onLeave);
+    map.on("click", "cells-fill", onClick);
+  }
+
+  // Altitude toggle: show the cell choropleth (+ hide the V1 cost surface) or the
+  // reverse. Barriers / network / bridges / boundary stay as shared context.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    const cellVis = altitude === "cells" ? "visible" : "none";
+    const bldgVis = altitude === "cells" ? "none" : "visible";
+    for (const l of ["cells-fill", "cells-outline", "cells-gap"]) {
+      if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", cellVis);
+    }
+    for (const l of ["buildings-pts", "buildings-fill"]) {
+      if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", bldgVis);
+    }
+    popupRef.current?.remove();
+  }, [altitude, ready]);
+
+  // New scores (slider/resolution change) → re-apply feature-state + recolor the
+  // ramp domain. Scores CHANGE with the sliders (unlike V1, where only the color
+  // mapping changes), so paint + state are driven from the same effect.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    applyCellState(cellScores, cellSliders.score_threshold);
+    if (map.getLayer("cells-fill")) {
+      map.setPaintProperty("cells-fill", "fill-color", cellColorExpression(colorDomain));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cellScores, colorDomain, cellSliders.score_threshold]);
+
+  // r8 ⇄ r9: swap the hex geometry, then re-apply feature-state once it reloads
+  // (feature-state is cleared on setData). App has already re-scored for cellRes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    const src = map.getSource("cells") as maplibregl.GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData(DATA + `cells_r${cellRes}.geojson`);
+    const reapply = (e: maplibregl.MapSourceDataEvent) => {
+      if (e.sourceId === "cells" && e.isSourceLoaded) {
+        applyCellState(cellScores, cellSliders.score_threshold);
+        map.off("sourcedata", reapply);
+      }
+    };
+    map.on("sourcedata", reapply);
+    return () => {
+      map.off("sourcedata", reapply);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cellRes]);
+
+  // Drill-down: filter the V1 building layers to a clicked cell's building_ids
+  // (computed via h3-js in App). null → clear the filter (all buildings return).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    const filter = drillCellIds
+      ? (["in", ["get", "building_id"], ["literal", drillCellIds]] as maplibregl.FilterSpecification)
+      : null;
+    for (const l of ["buildings-pts", "buildings-fill"]) {
+      if (map.getLayer(l)) map.setFilter(l, filter);
+    }
+  }, [drillCellIds]);
 
   return (
     <div className="nn-map-wrap">
