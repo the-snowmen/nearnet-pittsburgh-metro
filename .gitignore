@@ -34,3 +34,6 @@ web/*.tsbuildinfo
 .idea/
 .vscode/
 *.swp
+
+# fresh-eyes reviews (local-only, maker notes)
+/fresh-eyes/
