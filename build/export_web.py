@@ -197,9 +197,14 @@ def _build_tiles() -> None:
         ["tippecanoe", "-o", str(WEB_DATA / "points.pmtiles"), "-l", "buildings_pts",
          "-Z11", "-z13", "--drop-densest-as-needed", "-f", str(points_in)],
         # Footprint polygons — fade in at z12 (layer minzoom 12); z12-15, overzoomed
-        # past 15. drop-densest keeps dense low-zoom tiles within limits.
+        # past 15. Raise the per-tile byte/feature ceilings (default 500KB/200k) so
+        # the dense downtown tiles keep (nearly) every footprint at low zoom instead
+        # of being thinned — bigger tileset (~31MB) for a fuller z12/z13 surface.
+        # drop-densest stays as a backstop only if a tile still blows past 3MB.
         ["tippecanoe", "-o", str(WEB_DATA / "footprints.pmtiles"), "-l", "buildings",
-         "-Z12", "-z15", "--drop-densest-as-needed", "-f", str(foot_in)],
+         "-Z12", "-z15", "--drop-densest-as-needed",
+         "--maximum-tile-bytes=3000000", "--maximum-tile-features=500000",
+         "-f", str(foot_in)],
     ]
     for cmd in runs:
         out = Path(cmd[2]).name
