@@ -37,3 +37,4 @@ web/*.tsbuildinfo
 
 # fresh-eyes reviews (local-only, maker notes)
 /fresh-eyes/
+/fresh-eyes-scratch
