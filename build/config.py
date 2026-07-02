@@ -104,9 +104,10 @@ BARRIER_COLUMNS = {
 # --------------------------------------------------------------------------- #
 POI_SNAP_FT = 150.0                            # nearest-building assignment max distance (DESIGN.md §9)
 D_MAX_CANDIDATES_FT = [500.0, 1000.0, 1500.0, 2000.0, 3000.0]  # report in-range fraction at each
-D_MAX_FT = 2000.0                              # LOCKED from the full-city distribution: ~57.5% in-range,
-                                               # grays the clearly-far ~42% without graying the median
-                                               # building (p50 1,674 ft); primary-only corridor
+D_MAX_FT = 4000.0                              # V2 RE-LOCK vs the ROUTED distribution: 61.8% in-range,
+                                               # median routed building (p50 3,011 ft) well inside; grays the
+                                               # clearly-far tail; primary-only corridor. (V1 straight-line
+                                               # lock was 2,000 ft → 57.5% in-range on p50 1,674 ft.)
 BRIDGE_PROXIMITY_FT = 200.0                    # a bridge within this of a water crossing -> bridge_available (§7)
 SNAP_GRID_FT = 0.01                            # snap-to-grid so a true crossing never degrades to a FP tangent (§5.2)
 

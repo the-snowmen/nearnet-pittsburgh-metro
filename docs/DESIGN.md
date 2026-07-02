@@ -382,7 +382,7 @@ MIT covers the **code**. The **data** baked into the GeoParquet carries its own 
 
 ### Deferred to Phase 0 measurement (cannot be honestly guessed pre-data)
 
-- ~~**`D_max`** — the plausible service distance for `in_range`.~~ **Resolved: 2,000 ft** (full-city distribution → 57.5% in-range; grays the clearly-far ~42% without graying the median building at p50 1,674 ft).
+- ~~**`D_max`** — the plausible service distance for `in_range`.~~ **Resolved (V1): 2,000 ft** (full-city straight-line distribution → 57.5% in-range; median p50 1,674 ft). **Re-locked (V2): 4,000 ft** against the *routed* distribution (median p50 3,011 ft → 61.8% in-range; keeps the median building reachable, grays the clearly-far tail).
 - ~~**POI max-snap distance**.~~ **Resolved: 150 ft** (full-city snap rate 99.4% — comfortably sufficient).
 - ~~**Final corridor density** — `primary`-only vs promote `secondary` (§4 escape hatch).~~ **Resolved: keep `primary`-only** — the experiment showed promoting `secondary` over-densifies (86% in-range, arterial-crossing tier collapses, barrier signal drops ~⅔). See the §4 "Measured outcome" table.
 - **Exact Overture category-group identifier strings** — reconciled against the published `overture_categories.csv`; the *policy* is locked in `docs/POI_CATEGORIES.md`.
