@@ -38,7 +38,7 @@ export const DEFAULT_CELL_SLIDERS: CellSliders = {
   w_bldg: 0.1,
   norm: "z",
   min_buildings: 5,
-  score_threshold: 0.0,
+  score_threshold: 0.3, // top-quintile "where to look first" cut (Phase-0.5 p80 ≈ 0.32/0.34)
   g_demand: 0.5,
   g_cost: 0.5,
   g_barrier: 0.5,

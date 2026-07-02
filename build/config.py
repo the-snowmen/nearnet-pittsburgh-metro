@@ -154,7 +154,8 @@ SAMPLE_CELL_SLIDERS = {
     "w_poi": 0.40, "w_dist": 0.30, "w_barrier": 0.20, "w_bldg": 0.10,  # default weights (sum 1.0)
     "norm": "z",                  # 'z' (z-score) | 'minmax'
     "min_buildings": CELL_MIN_BUILDINGS,
-    "score_threshold": 0.0,       # map "hot set" cutoff: Index >= X (Phase-0.5: set from score distribution)
+    "score_threshold": 0.30,      # map "hot set" cutoff: Index >= X. LOCKED from Phase-0.5 score
+                                  # distribution = top-quintile (p80 ≈ 0.32 r8 / 0.34 r9). Not baked.
     "g_demand": 0.5, "g_cost": 0.5, "g_barrier": 0.5,  # gap-flag z-score cuts
     "demand_mode": "density",     # 'density' (default) | 'mass'
 }

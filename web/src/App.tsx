@@ -247,16 +247,22 @@ export default function App() {
         {/* Cell overview altitude — the V1.5 opportunity-index (opt-in). */}
         {cellMode && (
           <>
+            <p className="nn-honesty">
+              A transparent, tunable <b>opportunity index</b> — a normalized weighted score
+              over the modeled per-building facts, for gap analysis (high demand + low
+              reachability + low barriers). A screening <b>index</b>, not a cost.
+            </p>
             <div className="nn-stat">
               {cellStats ? (
                 <>
                   <div className="nn-stat-big">
                     {cellStats.hot.toLocaleString()}
-                    <span> cells</span>
+                    <span> cells above cut</span>
                   </div>
                   <div className="nn-stat-sub">
-                    of {cellStats.total.toLocaleString()} scored · Index ≥{" "}
-                    {fmtIndex(cellSliders.score_threshold)} · {cellStats.gaps.toLocaleString()} gap
+                    top of {cellStats.total.toLocaleString()} scored · Index ≥{" "}
+                    {fmtIndex(cellSliders.score_threshold)} (top-quintile default) ·{" "}
+                    {cellStats.gaps.toLocaleString()} gap
                   </div>
                 </>
               ) : (
@@ -293,7 +299,8 @@ export default function App() {
               </div>
               <ul className="nn-legend-list">
                 <li><i className="sw" style={{ background: "#d7dae0" }} /> excluded (below the min-buildings floor) — not scored (gray ≠ index 0)</li>
-                <li><i className="ln" style={{ background: "#e63946" }} /> gap cell (high demand + high cost/barriers — screening candidate)</li>
+                <li><i className="ln" style={{ background: "#e63946" }} /> gap cell — high modeled demand + high cost / barriers; a screening candidate, <b>not</b> a confirmed prospect</li>
+                <li>Brighter = above the draggable <b>Index ≥</b> cut (default top-quintile); dimmer cells are scored but below it.</li>
               </ul>
               <p className="nn-foot">
                 A normalized weighted score over the modeled per-building facts, for gap

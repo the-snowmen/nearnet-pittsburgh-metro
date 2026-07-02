@@ -86,12 +86,12 @@ export default function CellControls({ sliders: s, onChange, domain }: Props) {
 
       <div className="nn-group-h">Screening cuts</div>
       <Row
-        label="Show cells with Index ≥"
+        label="Map hot-set: show Index ≥"
         value={Math.min(Math.max(s.score_threshold, lo), hi)}
         min={Number(lo.toFixed(2))}
         max={Number(hi.toFixed(2))}
         step={0.05}
-        fmt={(n) => `≥ ${fmtIndex(n)}`}
+        fmt={(n) => fmtIndex(n)}
         onChange={(score_threshold) => onChange({ score_threshold })}
       />
       <Row
