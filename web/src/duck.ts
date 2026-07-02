@@ -115,6 +115,30 @@ export async function getConnector(buildingId: string): Promise<string | null> {
   return val;
 }
 
+/** Whether the routed-connector table loaded (export gates the route layer on this). */
+export const connectorsInitialised = (): boolean => connReady;
+
+// --- Export: footprint polygons as GeoJSON text (additive, removable) --------
+// Same no-spatial-extension trick as connectors: build/footprints.py bakes each
+// building's footprint as a GeoJSON string keyed by building_id, so the export can
+// draw real cost-colored polygons (KMZ / GeoJSON) without geometry in the browser
+// query engine. Absent file → footprintsInitialised() is false → export falls back
+// to centroid points.
+let footReady = false;
+
+/** Register footprints.parquet + CREATE TABLE footprints. Throws if the file is absent. */
+export async function initFootprints(url: string): Promise<void> {
+  if (!db || !conn) throw new Error("DuckDB not initialised");
+  await db.registerFileURL("footprints.parquet", url, duckdb.DuckDBDataProtocol.HTTP, false);
+  await conn.query(
+    `CREATE OR REPLACE TABLE footprints AS SELECT * FROM read_parquet('footprints.parquet')`,
+  );
+  footReady = true;
+}
+
+/** Whether the footprint-geometry table loaded (export uses polygons iff true). */
+export const footprintsInitialised = (): boolean => footReady;
+
 // --- V2.3 building POI detail (parent → children dossier) --------------------
 // pois.parquet has no GEOMETRY column, so DuckDB-WASM reads it with zero
 // extensions (same pattern as buildings/cells). Queried one building at a time on
@@ -180,6 +204,147 @@ export async function costStats(s: Sliders): Promise<CostStats> {
     reachable: Number(r.reachable),
     maxCost: Number(r.max_cost),
   };
+}
+
+// --- Per-building KMZ export -------------------------------------------------
+// The dossier's ⤓ exports the SELECTED building: its facts + est_cost (reusing
+// buildCostSQL so the number matches the dossier card), its footprint polygon, its
+// listings (with coords), and its routed connector. Single-building fetchers, each
+// additive/memoized (absent companion file → null/[], the export degrades cleanly).
+
+/** One building: facts + est_cost + centroid (geometry fetched separately). */
+export interface ExportBuilding {
+  building_id: string;
+  building_class: string | null;
+  connector_distance_ft: number;
+  water_crossings: number;
+  rail_crossings: number;
+  interstate_crossings: number;
+  arterial_crossings: number;
+  bridge_available: boolean;
+  poi_count: number;
+  est_cost: number;
+  in_range: boolean;
+  centroid_lon: number;
+  centroid_lat: number;
+}
+
+/** One reachable-building POI (public Overture listing), with its own point. */
+export interface ExportPoi {
+  poi_id: string;
+  building_id: string;
+  name: string | null;
+  category: string | null;
+  phone: string | null;
+  address: string | null;
+  locality: string | null;
+  lon: number;
+  lat: number;
+}
+
+/** A GeoJSON-text geometry (footprint polygon or routed connector) keyed by building. */
+export interface ExportGeom {
+  building_id: string;
+  geojson: string;
+}
+
+/** The selected building's facts + est_cost + centroid. null if the id is unknown. */
+export async function getExportBuilding(s: Sliders, id: string): Promise<ExportBuilding | null> {
+  if (!conn) throw new Error("DuckDB not initialised");
+  const safe = id.replace(/'/g, "''");
+  const sql = `
+    WITH c AS (${buildCostSQL(s)})
+    SELECT b.building_id, b.building_class, b.connector_distance_ft,
+           b.water_crossings, b.rail_crossings, b.interstate_crossings, b.arterial_crossings,
+           b.bridge_available, b.poi_count, b.centroid_lon, b.centroid_lat,
+           c.est_cost, c.in_range
+    FROM buildings b JOIN c USING (building_id)
+    WHERE b.building_id = '${safe}' LIMIT 1`;
+  const r = (await conn.query(sql)).get(0) as any;
+  if (!r) return null;
+  return {
+    building_id: String(r.building_id),
+    building_class: r.building_class == null ? null : String(r.building_class),
+    connector_distance_ft: Number(r.connector_distance_ft),
+    water_crossings: Number(r.water_crossings),
+    rail_crossings: Number(r.rail_crossings),
+    interstate_crossings: Number(r.interstate_crossings),
+    arterial_crossings: Number(r.arterial_crossings),
+    bridge_available: Boolean(r.bridge_available),
+    poi_count: Number(r.poi_count),
+    est_cost: Number(r.est_cost),
+    in_range: Boolean(r.in_range),
+    centroid_lon: Number(r.centroid_lon),
+    centroid_lat: Number(r.centroid_lat),
+  };
+}
+
+/** One building's footprint polygon as GeoJSON text (null if absent). Memoized. */
+const _footCache = new Map<string, string | null>();
+export async function getFootprint(id: string): Promise<string | null> {
+  if (!footReady || !conn) return null;
+  const hit = _footCache.get(id);
+  if (hit !== undefined) return hit;
+  const safe = id.replace(/'/g, "''");
+  const res = await conn.query(
+    `SELECT footprint_geojson FROM footprints WHERE building_id = '${safe}' LIMIT 1`,
+  );
+  const gj = (res.get(0) as any)?.footprint_geojson;
+  const val = gj == null ? null : String(gj);
+  _footCache.set(id, val);
+  return val;
+}
+
+/** One building's listings WITH coordinates (for KMZ points). [] if pois absent. */
+export async function getBuildingExportPois(id: string): Promise<ExportPoi[]> {
+  if (!poisReady || !conn) return [];
+  const safe = id.replace(/'/g, "''");
+  const res = await conn.query(
+    `SELECT poi_id, building_id, name, category, phone, address, locality, lon, lat
+     FROM pois WHERE building_id = '${safe}' ORDER BY name`,
+  );
+  return (res.toArray() as any[]).map((r) => ({
+    poi_id: String(r.poi_id),
+    building_id: String(r.building_id),
+    name: r.name == null ? null : String(r.name),
+    category: r.category == null ? null : String(r.category),
+    phone: r.phone == null ? null : String(r.phone),
+    address: r.address == null ? null : String(r.address),
+    locality: r.locality == null ? null : String(r.locality),
+    lon: Number(r.lon),
+    lat: Number(r.lat),
+  }));
+}
+
+// --- Building address (OSM nearest-address bake, additive) --------------------
+// building_address.parquet is building_id + address (nearest OSM address, ~27%
+// coverage). Absent file → getBuildingAddress returns null, dossier shows no address.
+let addrReady = false;
+const _addrCache = new Map<string, string | null>();
+
+/** Register building_address.parquet + CREATE TABLE. Throws if the file is absent. */
+export async function initAddresses(url: string): Promise<void> {
+  if (!db || !conn) throw new Error("DuckDB not initialised");
+  await db.registerFileURL("building_address.parquet", url, duckdb.DuckDBDataProtocol.HTTP, false);
+  await conn.query(
+    `CREATE OR REPLACE TABLE building_address AS SELECT * FROM read_parquet('building_address.parquet')`,
+  );
+  addrReady = true;
+}
+
+/** The building's nearest modeled address (null if none / file absent). Memoized. */
+export async function getBuildingAddress(id: string): Promise<string | null> {
+  if (!addrReady || !conn) return null;
+  const hit = _addrCache.get(id);
+  if (hit !== undefined) return hit;
+  const safe = id.replace(/'/g, "''");
+  const res = await conn.query(
+    `SELECT address FROM building_address WHERE building_id = '${safe}' LIMIT 1`,
+  );
+  const a = (res.get(0) as any)?.address;
+  const val = a == null ? null : String(a);
+  _addrCache.set(id, val);
+  return val;
 }
 
 // --- V1.5 cell layer (DESIGN.md §14) -----------------------------------------

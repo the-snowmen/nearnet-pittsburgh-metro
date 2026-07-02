@@ -21,7 +21,10 @@ import {
   costStats,
   initConnectors,
   initPois,
+  initFootprints,
+  initAddresses,
   getBuildingPois,
+  getBuildingAddress,
   initCells,
   loadCellStats,
   scoreCells,
@@ -41,6 +44,8 @@ const CELL_URLS: Record<CellRes, string> = {
 const CELL_STATS_URL = url("data/cell_stats.parquet");
 const CONNECTORS_URL = url("data/connectors.parquet");
 const POIS_URL = url("data/pois.parquet");
+const FOOTPRINTS_URL = url("data/footprints.parquet");
+const ADDRESSES_URL = url("data/building_address.parquet");
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -50,6 +55,7 @@ export default function App() {
   const [stats, setStats] = useState<CostStats | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null); // V2.3 pinned building
   const [dossierPois, setDossierPois] = useState<POI[] | null>(null); // its child POIs (null = loading)
+  const [dossierAddress, setDossierAddress] = useState<string | null>(null); // nearest OSM address
   // Desktop: the panel is always open (its toggle is display:none). Mobile (<720px)
   // is a bottom sheet (V2.4) — see useSheetDrag; panelOpen only matters on desktop.
   const [panelOpen, setPanelOpen] = useState(true);
@@ -121,6 +127,18 @@ export default function App() {
       } catch (e) {
         console.warn("POI detail unavailable (dossier disabled):", e);
       }
+      // Footprint polygons for export are additive: absent → KMZ falls back to points.
+      try {
+        await initFootprints(FOOTPRINTS_URL);
+      } catch (e) {
+        console.warn("footprint geometry unavailable (export uses points):", e);
+      }
+      // Building addresses are additive: absent → the dossier shows no address.
+      try {
+        await initAddresses(ADDRESSES_URL);
+      } catch (e) {
+        console.warn("building addresses unavailable (dossier shows none):", e);
+      }
       // Cell layer is additive: a failure here leaves the V1 screen fully working.
       try {
         await initCells(CELL_URLS, CELL_STATS_URL, 8);
@@ -146,12 +164,17 @@ export default function App() {
   useEffect(() => {
     if (!ready || selectedId == null) {
       setDossierPois(null);
+      setDossierAddress(null);
       return;
     }
     let live = true;
     setDossierPois(null); // loading
+    setDossierAddress(null);
     getBuildingPois(selectedId).then((ps) => {
       if (live) setDossierPois(ps);
+    });
+    getBuildingAddress(selectedId).then((a) => {
+      if (live) setDossierAddress(a);
     });
     return () => {
       live = false;
@@ -287,6 +310,7 @@ export default function App() {
                 facts={factsRef.current?.get(selectedId) ?? null}
                 pois={dossierPois}
                 sliders={sliders}
+                address={dossierAddress}
                 onClear={() => setSelectedId(null)}
                 onFrame={() => mapApiRef.current?.frameSelection()}
               />
@@ -375,9 +399,12 @@ export default function App() {
                     <span> cells above cut</span>
                   </div>
                   <div className="nn-stat-sub">
-                    top of {cellStats.total.toLocaleString()} scored · Index ≥{" "}
-                    {fmtIndex(cellSliders.score_threshold)} (top-quintile default) ·{" "}
-                    {cellStats.gaps.toLocaleString()} gap
+                    top of {cellStats.total.toLocaleString()} scored ·{" "}
+                    <span className="nn-nowrap">
+                      Index ≥ {fmtIndex(cellSliders.score_threshold)}
+                    </span>{" "}
+                    (top-quintile default) ·{" "}
+                    <span className="nn-nowrap">{cellStats.gaps.toLocaleString()} gap</span>
                   </div>
                 </>
               ) : (
@@ -413,9 +440,9 @@ export default function App() {
                 <span>{fmtIndex(colorDomain[1])}</span>
               </div>
               <ul className="nn-legend-list">
-                <li><i className="sw" style={{ background: "#d7dae0" }} /> excluded (below the min-buildings floor) — not scored (gray ≠ index 0)</li>
-                <li><i className="ln" style={{ background: "#e63946" }} /> gap cell — high modeled demand + high cost / barriers; a screening candidate, <b>not</b> a confirmed prospect</li>
-                <li>Brighter = above the draggable <b>Index ≥</b> cut (default top-quintile); dimmer cells are scored but below it.</li>
+                <li><i className="sw" style={{ background: "#d7dae0" }} /> excluded (below the min-buildings floor) — not scored <span className="nn-nowrap">(gray ≠ index 0)</span></li>
+                <li><i className="ln" style={{ background: "#e63946" }} /> gap cell — high modeled demand + high cost / barriers; <span className="nn-nowrap">a screening candidate, <b>not</b></span> a confirmed prospect</li>
+                <li>Brighter = above the draggable <span className="nn-nowrap"><b>Index ≥</b> cut</span> (default top-quintile); dimmer cells are scored but below it.</li>
               </ul>
               <p className="nn-foot">
                 A normalized weighted score over the modeled per-building facts, for gap

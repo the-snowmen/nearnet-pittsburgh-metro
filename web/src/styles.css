@@ -212,11 +212,17 @@ body {
 /* ---- custom range slider (one block → every slider) ---- */
 .nn-slider { display: block; }
 .nn-slider-top {
-  display: flex; justify-content: space-between; align-items: baseline;
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3);
   font-size: var(--fs-body); color: var(--muted); margin-bottom: var(--sp-1);
 }
-.nn-slider-top .nn-slider-label { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.nn-slider-top b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+/* Label + its "?" flow as inline content and WRAP; the value stays pinned top-right.
+   (Was inline-flex/nowrap → a long label overflowed and collided with the "?" + value.) */
+.nn-slider-top .nn-slider-label { flex: 1 1 auto; min-width: 0; line-height: 1.3; text-wrap: pretty; }
+.nn-slider-top .nn-info { margin-left: 4px; vertical-align: middle; }
+.nn-slider-top b {
+  flex: 0 0 auto; white-space: nowrap;
+  color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600;
+}
 
 .nn-slider input[type="range"] {
   -webkit-appearance: none; appearance: none;
@@ -254,6 +260,17 @@ body {
 .nn-slider input[type="range"]:focus { outline: none; }
 .nn-slider input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--sh-focus); }
 .nn-slider input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: var(--sh-focus); }
+
+/* ---- typographic polish (desktop + mobile) ----
+   `text-wrap: pretty` stops a single last word dropping to its own line (orphans);
+   `.nn-nowrap` glues comparison units (Index ≥ x, gray ≠ 0, N gap) so an equation
+   never splits across a line break. */
+.nn-lead, .nn-honesty, .nn-stat-sub, .nn-stat-hint, .nn-foot, .nn-preset-hint, .nn-drill,
+.nn-onboard, .nn-onboard-body, .nn-legend-list li,
+.nn-dossier-sub, .nn-dossier-foot, .nn-dossier-cost-foot, .nn-dossier-cost-status {
+  text-wrap: pretty;
+}
+.nn-nowrap { white-space: nowrap; }
 
 /* ---- custom checkbox ---- */
 .nn-toggle {
@@ -376,13 +393,16 @@ body {
 }
 .nn-dossier-actions { flex: none; display: inline-flex; gap: var(--sp-1); }
 .nn-dossier-close,
-.nn-dossier-frame {
+.nn-dossier-frame,
+.nn-dossier-export {
   flex: none; width: 22px; height: 22px; line-height: 1; cursor: pointer;
   color: var(--muted); background: transparent;
   border: 1px solid var(--line-2); border-radius: var(--r-1);
 }
 .nn-dossier-close:hover,
-.nn-dossier-frame:hover { color: var(--accent); border-color: var(--accent); }
+.nn-dossier-frame:hover,
+.nn-dossier-export:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.nn-dossier-export:disabled { opacity: 0.5; cursor: default; }
 .nn-dossier-sub { font-size: var(--fs-small); color: var(--muted); margin-top: var(--sp-1); }
 
 /* V2.4 — itemized screening estimate inside the dossier (absorbs the old click popup) */
@@ -402,9 +422,35 @@ body {
 .nn-dossier-poi:first-child { border-top: none; }
 .nn-poi-name { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
 .nn-poi-type { font-size: var(--fs-small); color: var(--muted); text-transform: capitalize; }
-.nn-poi-meta { font-size: var(--fs-small); color: var(--muted); margin-top: 2px; }
+.nn-poi-meta { font-size: var(--fs-small); color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: var(--sp-2); }
 .nn-poi-meta a { color: var(--accent); text-decoration: none; }
 .nn-poi-meta a:hover { text-decoration: underline; }
+.nn-poi-addr { font-size: var(--fs-small); color: var(--muted); margin-top: 2px; }
+
+/* copy-to-clipboard affordances (phone / address) + building address row */
+.nn-dossier-headmain { min-width: 0; flex: 1 1 auto; }
+.nn-dossier-addr {
+  display: inline-block; margin-top: 3px; max-width: 100%;
+  font-size: var(--fs-small); color: var(--muted); text-align: left;
+}
+.nn-addr-note { color: var(--muted); opacity: 0.75; }
+.nn-copy {
+  padding: 0; background: transparent; border: none; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
+}
+.nn-copy:hover { color: var(--accent); text-decoration: underline; }
+.nn-copy-ic {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; cursor: pointer;
+  font-size: 12px; color: var(--muted); background: transparent;
+  border: 1px solid var(--line-2); border-radius: var(--r-0);
+}
+.nn-copy-ic:hover { color: var(--accent); border-color: var(--accent); }
+.nn-dossier-exportnote { font-size: var(--fs-small); color: var(--muted); margin-top: var(--sp-1); }
+.nn-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 .nn-dossier-foot {
   font-size: var(--fs-eyebrow); color: var(--muted); line-height: 1.5;
   margin-top: var(--sp-2); font-style: italic;
