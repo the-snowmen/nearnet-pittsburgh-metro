@@ -279,6 +279,8 @@ export default function MapView({
     });
 
     map.on("load", () => {
+      // Attribution collapsed by default (compact ⓘ; expands on click).
+      map.getContainer().querySelector(".maplibregl-ctrl-attrib")?.removeAttribute("open");
       // Barrier centerlines (the obstacles) — drawn under the corridor + buildings.
       map.addSource("water", { type: "geojson", data: DATA + "barriers_water.geojson" });
       map.addSource("rail", { type: "geojson", data: DATA + "barriers_rail.geojson" });
@@ -299,29 +301,31 @@ export default function MapView({
         data: { type: "FeatureCollection", features: [] },
       });
 
+      // Barriers share a DASHED language (obstacle) so they read distinctly from
+      // the SOLID network/corridor; color still separates the four tiers.
       map.addLayer({
         id: "water-l",
         type: "line",
         source: "water",
-        paint: { "line-color": "#3b82c4", "line-width": 2.5, "line-opacity": 0.7 },
+        paint: { "line-color": "#3b82c4", "line-width": 2.6, "line-dasharray": [4, 2], "line-opacity": 0.8 },
       });
       map.addLayer({
         id: "rail-l",
         type: "line",
         source: "rail",
-        paint: { "line-color": "#7a5c3e", "line-width": 1.6, "line-dasharray": [2, 2], "line-opacity": 0.7 },
+        paint: { "line-color": "#7a5c3e", "line-width": 2, "line-dasharray": [2, 2], "line-opacity": 0.8 },
       });
       map.addLayer({
         id: "interstate-l",
         type: "line",
         source: "interstate",
-        paint: { "line-color": "#e8833a", "line-width": 2, "line-opacity": 0.55 },
+        paint: { "line-color": "#e8833a", "line-width": 2.2, "line-dasharray": [5, 2], "line-opacity": 0.7 },
       });
       map.addLayer({
         id: "arterial-l",
         type: "line",
         source: "arterial",
-        paint: { "line-color": "#d9b500", "line-width": 1.4, "line-opacity": 0.45 },
+        paint: { "line-color": "#c99a00", "line-width": 1.6, "line-dasharray": [1, 2], "line-opacity": 0.6 },
       });
 
       // Cost surface — centroid DOTS at overview zooms (fast recolor + smooth pan).
@@ -367,7 +371,8 @@ export default function MapView({
         id: "network-l",
         type: "line",
         source: "network",
-        paint: { "line-color": "#0a9396", "line-width": 2.4, "line-opacity": 0.9 },
+        // SOLID + thick + full opacity: the corridor is the hero "route" line.
+        paint: { "line-color": "#0a9396", "line-width": 3, "line-opacity": 0.95 },
       });
       // Bridges — potential lower-cost crossings.
       map.addLayer({
@@ -509,6 +514,12 @@ export default function MapView({
       if (hoverIdRef.current !== id) {
         hoverIdRef.current = id;
         highlight(id, p);
+      }
+      // Skip the hover popup for the already-pinned building (avoids a 2nd
+      // identical popup stacking on top of the pin).
+      if (id === pinnedIdRef.current) {
+        hoverPopup.remove();
+        return;
       }
       const fct = factsRef.current?.get(id);
       if (fct)

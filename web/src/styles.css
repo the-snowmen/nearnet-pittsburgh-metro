@@ -291,8 +291,10 @@ body {
    self-contained chips (same idiom as presets → no JSX restructure needed) */
 .nn-seg { display: flex; align-items: center; gap: var(--sp-1); margin: var(--sp-3) 0; flex-wrap: wrap; }
 .nn-seg-label {
+  flex: 0 0 100%; /* full-width label → buttons wrap onto the next row, sharing full width */
   font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--muted); min-width: 58px; display: inline-flex; align-items: center; gap: var(--sp-1);
+  color: var(--muted); display: inline-flex; align-items: center; gap: var(--sp-1);
+  margin-bottom: var(--sp-1);
 }
 .nn-seg-btn {
   flex: 1; min-width: 0; padding: var(--sp-2); font-size: var(--fs-body); cursor: pointer;
@@ -333,6 +335,18 @@ body {
 .nn-legend-list i.ln { width: 14px; height: 3px; border-radius: var(--r-0); display: inline-block; }
 .nn-legend-note { font-weight: 600; color: var(--warn); text-transform: none; letter-spacing: 0; }
 .nn-foot { font-size: var(--fs-small); color: var(--muted); line-height: 1.6; margin-top: var(--sp-3); }
+/* grouped legend (Network / Barriers / Extent) + solid-vs-dashed swatches */
+.nn-legend-group { margin-top: var(--sp-3); }
+.nn-legend-sub {
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink); font-weight: 600; margin-bottom: var(--sp-1);
+}
+.nn-legend-sub span { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.nn-legend-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 2px var(--sp-3); }
+.nn-legend-list i.ln.dash {
+  height: 0; background: none; border-radius: 0;
+  border-top: 2.5px dashed currentColor; /* color set inline → dashed = barrier language */
+}
 
 /* drill-down chip */
 .nn-drill {
@@ -387,24 +401,49 @@ body {
   font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
   color: var(--muted); margin-bottom: var(--sp-2);
 }
-.nn-cell-table-scroll { max-height: 288px; overflow-y: auto; border: 1px solid var(--line-2); border-radius: var(--r-2); }
-.nn-cell-table table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
-.nn-cell-table th, .nn-cell-table td {
-  padding: var(--sp-1) var(--sp-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+/* ranked cells as a compact card list (fits the narrow panel — no horizontal scroll) */
+.nn-rank-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-2); margin-bottom: var(--sp-2); flex-wrap: wrap;
 }
-.nn-cell-table th:first-child, .nn-cell-table td:first-child { text-align: left; }
-.nn-cell-table thead th {
-  position: sticky; top: 0; background: var(--panel-2); color: var(--muted);
-  border-bottom: 1px solid var(--line-2); font-weight: 600;
-  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.06em;
+.nn-rank-bar .nn-cell-table-h { margin-bottom: 0; }
+.nn-rank-sort {
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
 }
-.nn-cell-table th.sortable { cursor: pointer; user-select: none; }
-.nn-cell-table th.sortable:hover { color: var(--ink); }
-.nn-cell-table tbody tr { cursor: pointer; }
-.nn-cell-table tbody tr:nth-child(even) { background: rgba(40, 30, 15, 0.025); }
-.nn-cell-table tbody tr:hover { background: var(--accent-weak); }
-.nn-cell-table td.idx { color: var(--ink); font-weight: 700; }
-.nn-cell-table tbody tr.gap { box-shadow: inset 3px 0 0 var(--gap-red); }
+.nn-rank-sort label { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.nn-rank-sort select {
+  font: inherit; font-size: var(--fs-small); text-transform: none; letter-spacing: 0;
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line-2);
+  border-radius: var(--r-1); padding: 2px var(--sp-1); cursor: pointer;
+}
+.nn-rank-dir {
+  width: 22px; height: 22px; line-height: 1; cursor: pointer; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-1);
+}
+.nn-rank-dir:hover { border-color: var(--accent); }
+.nn-rank-list { max-height: 320px; overflow-y: auto; border: 1px solid var(--line-2); border-radius: var(--r-2); }
+.nn-rank-item {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left;
+  padding: var(--sp-2) var(--sp-3); cursor: pointer; font: inherit; color: var(--ink);
+  background: transparent; border: none; border-bottom: 1px solid var(--line);
+}
+.nn-rank-item:last-child { border-bottom: none; }
+.nn-rank-item:hover { background: var(--accent-weak); }
+.nn-rank-item.gap { box-shadow: inset 3px 0 0 var(--gap-red); }
+.nn-rank-idx {
+  flex: none; min-width: 52px; display: inline-flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--fs-h2); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.nn-rank-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-3);
+  font-size: var(--fs-small); color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.nn-rank-stats > span { white-space: nowrap; }
+.nn-rank-stats em {
+  font-style: normal; color: var(--muted); opacity: 0.7; margin-right: 2px;
+  text-transform: uppercase; font-size: 9px; letter-spacing: 0.04em;
+}
 .nn-gap-badge {
   display: inline-block; margin-right: var(--sp-1); padding: 0 var(--sp-1);
   font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em;
@@ -425,15 +464,13 @@ body {
 }
 .nn-info-btn:hover { color: var(--accent); border-color: var(--accent); }
 .nn-info-pop {
-  position: absolute; z-index: 40; left: 0; top: calc(100% + 6px);
-  width: max-content; max-width: 240px;
+  position: fixed; z-index: 60; left: 0; top: 0; /* left/top set by JS, clamped to viewport */
+  width: max-content; max-width: min(240px, calc(100vw - 16px));
   font-size: var(--fs-small); font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0;
   color: var(--float-ink); background: var(--float-bg);
   border: 1px solid var(--float-line); border-radius: var(--r-2);
   box-shadow: var(--float-shadow); padding: var(--sp-2) var(--sp-3);
 }
-.nn-info-pop[data-pos="above"] { top: auto; bottom: calc(100% + 6px); }
-.nn-info-pop[data-align="right"] { left: auto; right: 0; }
 
 /* ---- onboarding cue (OnboardingCue.tsx) ---- */
 .nn-onboard {
@@ -467,7 +504,7 @@ body {
   z-index: 5; border: 1px solid var(--float-line); box-shadow: var(--sh-2);
 }
 .nn-zoom {
-  position: absolute; right: 10px; bottom: 28px; z-index: 5;
+  position: absolute; left: 10px; bottom: 34px; z-index: 5; /* above the scale bar, clear of attribution */
   background: rgba(255, 255, 255, 0.88); color: var(--muted);
   border: 1px solid var(--float-line); border-radius: var(--r-1);
   padding: 2px var(--sp-2); font-size: var(--fs-eyebrow); font-variant-numeric: tabular-nums;

@@ -292,13 +292,29 @@ export default function App() {
                 <span>{fmtUSD(sliders.budget / 2)}</span>
                 <span>≥ {fmtUSD(sliders.budget)}</span>
               </div>
-              <ul className="nn-legend-list">
-                <li><i className="sw" style={{ background: "#9aa0a6" }} /> beyond range (~4,000 ft service distance)</li>
-                <li><i className="ln" style={{ background: "#1b2733" }} /> City of Pittsburgh extent (project clip)</li>
-                <li><i className="ln" style={{ background: "#0a9396" }} /> modeled fiber corridor (primary) <Info term="corridor" /></li>
-                <li><i className="ln" style={{ background: "#9b5de5" }} /> bridge (potential lower-cost crossing)</li>
-                <li><i className="ln" style={{ background: "#3b82c4" }} /> water · <i className="ln" style={{ background: "#7a5c3e" }} /> rail · <i className="ln" style={{ background: "#e8833a" }} /> interstate · <i className="ln" style={{ background: "#d9b500" }} /> arterial</li>
-              </ul>
+              <div className="nn-legend-group">
+                <div className="nn-legend-sub">Network <span>— solid</span></div>
+                <ul className="nn-legend-list">
+                  <li><i className="ln solid" style={{ background: "#0a9396" }} /> modeled fiber corridor (primary) <Info term="corridor" /></li>
+                  <li><i className="ln solid" style={{ background: "#9b5de5" }} /> bridge (potential lower-cost crossing)</li>
+                </ul>
+              </div>
+              <div className="nn-legend-group">
+                <div className="nn-legend-sub">Barriers <span>— dashed, add crossing cost</span></div>
+                <ul className="nn-legend-list nn-legend-cols">
+                  <li><i className="ln dash" style={{ color: "#3b82c4" }} /> water</li>
+                  <li><i className="ln dash" style={{ color: "#7a5c3e" }} /> rail</li>
+                  <li><i className="ln dash" style={{ color: "#e8833a" }} /> interstate</li>
+                  <li><i className="ln dash" style={{ color: "#c99a00" }} /> arterial</li>
+                </ul>
+              </div>
+              <div className="nn-legend-group">
+                <div className="nn-legend-sub">Extent</div>
+                <ul className="nn-legend-list nn-legend-cols">
+                  <li><i className="ln dash" style={{ color: "#1b2733" }} /> City of Pittsburgh clip</li>
+                  <li><i className="sw" style={{ background: "#9aa0a6" }} /> beyond range (~4,000 ft)</li>
+                </ul>
+              </div>
               <p className="nn-foot">
                 Hover or tap a building for the itemized screening estimate. In-range ≤ ~4,000 ft
                 (0.76 mi); distances computed in EPSG:2272 (State Plane PA-South, US survey feet).
@@ -398,7 +414,7 @@ export default function App() {
           onSelectBuilding={setSelectedId}
           selectedId={selectedId}
         />
-        {!cellMode && <OnboardingCue />}
+        {ready && !cellMode && <OnboardingCue />}
       </main>
     </div>
   );

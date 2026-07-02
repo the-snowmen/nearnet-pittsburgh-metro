@@ -1,9 +1,9 @@
 {
   "name": "nearnet-pgh-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.3",
   "type": "module",
-  "description": "near-net Pittsburgh — client-side fiber near-net proximity screen (V1)",
+  "description": "near-net Pittsburgh — client-side fiber near-net proximity screen",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

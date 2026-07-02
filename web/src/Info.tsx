@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 // Plain-English glossary for the jargon "?" chips. One place for the copy so a
 // term is defined once and reused wherever it appears in the panel.
@@ -19,25 +20,42 @@ const GLOSSARY: Record<string, ReactNode> = {
 interface Props {
   term: string; // key into GLOSSARY (also the aria label subject)
   label?: string; // trigger text; defaults to a "?" chip
-  pos?: "below" | "above";
-  align?: "left" | "right";
 }
 
 // A dependency-free info tooltip: focusable "?" button + role="tooltip" popover.
-// Opens on hover/focus/click; closes on Escape (returns focus), blur, outside click.
-export default function Info({ term, label, pos = "below", align = "left" }: Props) {
+// The popover is position:fixed and clamped to the viewport on open, so it never
+// overflows / gets clipped by the narrow scrolling panel. Opens on hover/focus/
+// click; closes on Escape (returns focus), blur, outside click.
+export default function Info({ term, label }: Props) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const wrapRef = useRef<HTMLSpanElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLSpanElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
 
   const body = GLOSSARY[term] ?? null;
 
+  // Position the fixed popover from the button rect, clamped to the viewport.
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current || !popRef.current) return;
+    const b = btnRef.current.getBoundingClientRect();
+    const el = popRef.current;
+    const pw = el.offsetWidth;
+    const ph = el.offsetHeight;
+    const m = 8;
+    const left = Math.max(m, Math.min(b.left, window.innerWidth - pw - m));
+    let top = b.bottom + 6;
+    if (top + ph > window.innerHeight - m) top = Math.max(m, b.top - ph - 6); // flip up
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target as Node) && !popRef.current?.contains(e.target as Node))
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -78,11 +96,23 @@ export default function Info({ term, label, pos = "below", align = "left" }: Pro
       >
         {label ?? "?"}
       </button>
-      {open && (
-        <span id={id} role="tooltip" className="nn-info-pop" data-pos={pos} data-align={align}>
-          {body}
-        </span>
-      )}
+      {open &&
+        createPortal(
+          // Portal to <body> so position:fixed resolves against the viewport, not
+          // a transformed ancestor (the panel's entrance animation / mobile drawer
+          // translateX would otherwise become the containing block and mis-place it).
+          <span
+            id={id}
+            role="tooltip"
+            className="nn-info-pop"
+            ref={popRef}
+            onMouseEnter={openNow}
+            onMouseLeave={closeSoon}
+          >
+            {body}
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }
