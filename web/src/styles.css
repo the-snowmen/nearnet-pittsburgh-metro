@@ -474,8 +474,8 @@ body {
 
 /* ---- onboarding cue (OnboardingCue.tsx) ---- */
 .nn-onboard {
-  position: absolute; z-index: 25; left: 50%; top: var(--sp-5); transform: translateX(-50%);
-  max-width: min(440px, 92vw);
+  position: absolute; z-index: 25; right: var(--sp-4); top: var(--sp-4);
+  max-width: min(360px, calc(100vw - 2 * var(--sp-4)));
   background: var(--float-bg); color: var(--ink);
   border: 1px solid var(--float-line); border-radius: var(--r-2);
   box-shadow: var(--sh-2); padding: var(--sp-3) var(--sp-4);
@@ -584,6 +584,8 @@ body {
   }
   .nn-panel.open { transform: translateX(0); }
   .maplibregl-ctrl-top-left { top: 4px; }
+  /* drop the onboarding cue below the ☰ Controls toggle (top-right on mobile) */
+  .nn-onboard { top: 56px; }
 }
 
 /* ============================================================================
