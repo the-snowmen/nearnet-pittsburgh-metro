@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import MapView, { type Altitude } from "./MapView";
+import MapView, { type Altitude, type MapViewHandle } from "./MapView";
 import Controls from "./Controls";
 import CellControls from "./CellControls";
 import CellTable from "./CellTable";
 import Info from "./Info";
 import OnboardingCue from "./OnboardingCue";
 import Dossier from "./Dossier";
+import { useSheetDrag } from "./useSheetDrag";
 import { DEFAULT_SLIDERS, fmtUSD, type Sliders, type BuildingFacts, type POI } from "./cost";
 import {
   DEFAULT_CELL_SLIDERS,
@@ -49,21 +50,40 @@ export default function App() {
   const [stats, setStats] = useState<CostStats | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null); // V2.3 pinned building
   const [dossierPois, setDossierPois] = useState<POI[] | null>(null); // its child POIs (null = loading)
-  // Desktop: open (toggle is display:none, so it can't be closed). Mobile (<720px):
-  // start collapsed so the first impression is the map, not a wall of sliders.
-  const [panelOpen, setPanelOpen] = useState(
-    () => typeof window === "undefined" || window.innerWidth >= 720,
+  // Desktop: the panel is always open (its toggle is display:none). Mobile (<720px)
+  // is a bottom sheet (V2.4) — see useSheetDrag; panelOpen only matters on desktop.
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 720px)").matches,
   );
   const factsRef = useRef<Map<string, BuildingFacts> | null>(null);
   const debounceRef = useRef<number | undefined>(undefined);
   const panelRef = useRef<HTMLElement>(null);
+  const mapApiRef = useRef<MapViewHandle>(null); // V2.4 — dossier ⤢ calls frameSelection()
 
-  // Mark the closed mobile drawer `inert` so its sliders leave the tab order
-  // (set imperatively — `inert` isn't in the React 18 attribute types). Desktop
-  // keeps panelOpen=true, so this never fires there.
+  // V2.4 — mobile bottom-sheet detents (peek / half / full), drag + snap.
+  const sheet = useSheetDrag(isMobile);
+
+  // Track the mobile breakpoint so the sheet vs desktop-panel logic stays in sync.
   useEffect(() => {
-    panelRef.current?.toggleAttribute("inert", !panelOpen);
-  }, [panelOpen]);
+    const mq = window.matchMedia("(max-width: 720px)");
+    const on = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+
+  // On mobile, selecting a building raises the sheet so the dossier is visible
+  // (the Apple/Google-Maps "tap a place → sheet rises" behavior).
+  const setDetent = sheet.setDetent;
+  useEffect(() => {
+    if (isMobile && selectedId) setDetent("half");
+  }, [selectedId, isMobile, setDetent]);
+
+  // Mark the closed desktop panel `inert` (never fires — desktop stays open); the
+  // mobile sheet is reachable at every detent, so it must NOT be inert.
+  useEffect(() => {
+    panelRef.current?.toggleAttribute("inert", !isMobile && !panelOpen);
+  }, [panelOpen, isMobile]);
 
   // --- V1.5 cell-layer state (all inert until the files load) ---------------
   const [cellsAvailable, setCellsAvailable] = useState(false);
@@ -196,17 +216,30 @@ export default function App() {
     <div className="nn-app">
       <button
         className="nn-panel-toggle"
-        aria-expanded={panelOpen}
+        aria-expanded={isMobile ? sheet.detent !== "peek" : panelOpen}
         aria-controls="nn-panel"
-        onClick={() => setPanelOpen((o) => !o)}
+        onClick={() =>
+          isMobile
+            ? setDetent(sheet.detent === "peek" ? "full" : "peek")
+            : setPanelOpen((o) => !o)
+        }
       >
-        {panelOpen ? "✕ Close" : "☰ Controls"}
+        {(isMobile ? sheet.detent !== "peek" : panelOpen) ? "✕ Close" : "☰ Controls"}
       </button>
       <aside
         ref={panelRef}
         id="nn-panel"
         className={"nn-panel" + (panelOpen ? " open" : "")}
+        style={sheet.style}
       >
+        {/* Mobile-only grabber — drag to move between detents; keyboard cycles them. */}
+        <button
+          type="button"
+          className="nn-sheet-grab"
+          aria-label="Resize panel — drag, or use arrow keys"
+          onPointerDown={sheet.onGrabPointerDown}
+          onKeyDown={sheet.onGrabKeyDown}
+        />
         <header className="nn-head">
           <h1>
             near-net <span className="nn-city">· Pittsburgh</span>{" "}
@@ -253,7 +286,9 @@ export default function App() {
               <Dossier
                 facts={factsRef.current?.get(selectedId) ?? null}
                 pois={dossierPois}
+                sliders={sliders}
                 onClear={() => setSelectedId(null)}
+                onFrame={() => mapApiRef.current?.frameSelection()}
               />
             )}
             {drillCellId && (
@@ -401,6 +436,7 @@ export default function App() {
 
       <main className="nn-main">
         <MapView
+          ref={mapApiRef}
           ready={ready}
           sliders={sliders}
           facts={factsRef.current}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import type { BuildingFacts, Sliders } from "./cost";
@@ -61,7 +61,13 @@ interface Props {
   onCellClick: (cellId: string) => void;
   // V2.3 — pinned building id (or null on dismiss) → drives the panel POI dossier.
   onSelectBuilding?: (id: string | null) => void;
-  selectedId?: string | null; // controlled: App clearing it (dossier ✕) drops the pin
+  selectedId?: string | null; // controlled: App clearing it (dossier ✕) drops the selection
+}
+
+// V2.4 — imperative handle so the dossier's ⤢ "frame" button can re-fit the map
+// to the last selection's extent (building footprint + its connector route).
+export interface MapViewHandle {
+  frameSelection: () => void;
 }
 
 // Envelope of the City of Pittsburgh clip (fallback until boundary.geojson loads).
@@ -194,7 +200,7 @@ function routedConnectorFC(gj: string): GeoJSON.FeatureCollection {
   }
 }
 
-export default function MapView({
+const MapView = forwardRef<MapViewHandle, Props>(function MapView({
   ready,
   sliders,
   facts,
@@ -207,18 +213,24 @@ export default function MapView({
   onCellClick,
   onSelectBuilding,
   selectedId,
-}: Props) {
+}: Props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
   const slidersRef = useRef<Sliders>(sliders);
   const factsRef = useRef<Map<string, BuildingFacts> | null>(facts);
   const popupRef = useRef<maplibregl.Popup | null>(null);
-  const pinPopupRef = useRef<maplibregl.Popup | null>(null);
   const hoverIdRef = useRef<string | null>(null);
   const pinnedIdRef = useRef<string | null>(null);
   const pinnedPropsRef = useRef<GeoJSON.GeoJsonProperties>(null);
   const boundsRef = useRef<maplibregl.LngLatBoundsLike>(CITY_BOUNDS);
+  // V2.4 — last selection's extent (building + connector) for the ⤢ frame button.
+  const selBoundsRef = useRef<maplibregl.LngLatBoundsLike | null>(null);
+  // Touch devices have no hover → suppress the hover popup so a tap doesn't flash it
+  // (tap = select → dossier). `click` still fires for both mouse and touch.
+  const hoverCapableRef = useRef(
+    typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches,
+  );
   const repaintTimer = useRef<number | undefined>(undefined);
   // Cell-layer refs (read by event handlers without re-binding on every change).
   const altitudeRef = useRef<Altitude>(altitude);
@@ -235,10 +247,34 @@ export default function MapView({
   onCellClickRef.current = onCellClick;
   onSelectBuildingRef.current = onSelectBuilding;
 
-  // App cleared the selection (dossier ✕) → drop the map pin to stay in sync.
-  // (Setting it to an id is driven by a map click, which already shows the pin.)
+  // Padding keeps the selection out from under the occluding panel: on desktop the
+  // panel covers the left edge; on mobile the bottom sheet covers the lower half.
+  const selectionPadding = () =>
+    window.innerWidth < 720
+      ? { top: 60, right: 20, bottom: Math.round(window.innerHeight * 0.45), left: 20 }
+      : { top: 60, right: 40, bottom: 40, left: 400 };
+
+  // Fit the map to the last selection's extent (building + its connector route).
+  const fitSelection = () => {
+    const map = mapRef.current;
+    if (!map || !selBoundsRef.current) return;
+    map.fitBounds(selBoundsRef.current, { padding: selectionPadding(), maxZoom: 17, duration: 700 });
+  };
+
+  useImperativeHandle(ref, () => ({ frameSelection: fitSelection }), []);
+
+  // App cleared the selection (dossier ✕ / Esc / empty-map click) → drop the map
+  // route + outline to stay in sync. (Selecting an id is driven by a map click.)
   useEffect(() => {
-    if (selectedId == null) pinPopupRef.current?.remove();
+    if (selectedId != null) return;
+    pinnedIdRef.current = null;
+    pinnedPropsRef.current = null;
+    selBoundsRef.current = null;
+    const map = mapRef.current;
+    if (map && loadedRef.current && !hoverIdRef.current) {
+      map.setFilter("buildings-outline", ["==", ["get", "building_id"], ""]);
+      (map.getSource("hoverconn") as maplibregl.GeoJSONSource | undefined)?.setData(EMPTY_FC);
+    }
   }, [selectedId]);
 
   // --- one-time map construction -------------------------------------------
@@ -270,12 +306,6 @@ export default function MapView({
       closeOnClick: false,
       maxWidth: "320px",
       className: "nn-popup",
-    });
-    pinPopupRef.current = new maplibregl.Popup({
-      closeButton: true,
-      closeOnClick: false,
-      maxWidth: "320px",
-      className: "nn-popup nn-popup-pin",
     });
 
     map.on("load", () => {
@@ -461,11 +491,6 @@ export default function MapView({
     const expr = costColorExpression(slidersRef.current);
     map.setPaintProperty("buildings-pts", "circle-color", expr);
     map.setPaintProperty("buildings-fill", "fill-color", expr);
-    // keep a pinned popup's itemized numbers in sync with the sliders
-    if (pinnedIdRef.current) {
-      const fct = factsRef.current?.get(pinnedIdRef.current);
-      if (fct) pinPopupRef.current?.setHTML(popupHTML(fct, slidersRef.current));
-    }
   }
 
   useEffect(() => {
@@ -478,7 +503,6 @@ export default function MapView({
   function attachHover() {
     const map = mapRef.current!;
     const hoverPopup = popupRef.current!;
-    const pinPopup = pinPopupRef.current!;
 
     // connector + footprint outline follow a building id. V2: show the straight-line
     // fallback (from props) instantly, then upgrade to the real routed polyline once
@@ -515,12 +539,8 @@ export default function MapView({
         hoverIdRef.current = id;
         highlight(id, p);
       }
-      // Skip the hover popup for the already-pinned building (avoids a 2nd
-      // identical popup stacking on top of the pin).
-      if (id === pinnedIdRef.current) {
-        hoverPopup.remove();
-        return;
-      }
+      // Touch: no hover popup (a tap selects → the panel dossier is the detail surface).
+      if (!hoverCapableRef.current) return;
       const fct = factsRef.current?.get(id);
       if (fct)
         hoverPopup.setLngLat(e.lngLat).setHTML(popupHTML(fct, slidersRef.current)).addTo(map);
@@ -533,6 +553,9 @@ export default function MapView({
       restoreToPinned();
     };
 
+    // V2.4 — a click SELECTS (opens the panel dossier); it no longer drops a sticky
+    // popup. It keeps the route drawn (pinnedIdRef) and fits the map to the
+    // building + its connector, stored so the dossier's ⤢ can re-frame it later.
     const onClick = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
       if (!f || !f.properties) return;
@@ -543,17 +566,25 @@ export default function MapView({
       pinnedIdRef.current = id;
       pinnedPropsRef.current = p;
       highlight(id, p);
-      pinPopup.setLngLat(e.lngLat).setHTML(popupHTML(fct, slidersRef.current)).addTo(map);
+      // Extent = the clicked footprint/point geometry + its straight-line connector
+      // (both available synchronously; the async routed line is a later nicety).
+      const fc: GeoJSON.FeatureCollection = {
+        type: "FeatureCollection",
+        features: [{ type: "Feature", properties: {}, geometry: f.geometry }, ...connectorFC(p).features],
+      };
+      selBoundsRef.current = bboxOf(fc);
+      fitSelection();
       onSelectBuildingRef.current?.(id); // open the panel POI dossier
     };
 
-    // pin dismissed (✕ / Esc / empty-map click) -> clear state + highlight
-    pinPopup.on("close", () => {
+    // Clear the selection (route + outline + dossier) from state.
+    const clearSelection = () => {
       pinnedIdRef.current = null;
       pinnedPropsRef.current = null;
+      selBoundsRef.current = null;
       if (!hoverIdRef.current) highlight("", null);
       onSelectBuildingRef.current?.(null); // close the dossier
-    });
+    };
 
     // hover + click work on whichever surface is active: dots or footprints.
     for (const lyr of ["buildings-pts", "buildings-fill"]) {
@@ -561,12 +592,13 @@ export default function MapView({
       map.on("mouseleave", lyr, onLeave);
       map.on("click", lyr, onClick);
     }
+    // Click on empty map (no building under the cursor) clears the selection.
     map.on("click", (e) => {
       if (!map.queryRenderedFeatures(e.point, { layers: ["buildings-pts", "buildings-fill"] }).length)
-        pinPopup.remove();
+        clearSelection();
     });
     document.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape") pinPopup.remove();
+      if (ev.key === "Escape" && pinnedIdRef.current) clearSelection();
     });
   }
 
@@ -695,4 +727,6 @@ export default function MapView({
       </div>
     </div>
   );
-}
+});
+
+export default MapView;

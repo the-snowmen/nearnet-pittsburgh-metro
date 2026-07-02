@@ -374,13 +374,28 @@ body {
 .nn-dossier-title {
   font-size: var(--fs-h2); font-weight: 600; color: var(--ink); text-transform: capitalize;
 }
-.nn-dossier-close {
+.nn-dossier-actions { flex: none; display: inline-flex; gap: var(--sp-1); }
+.nn-dossier-close,
+.nn-dossier-frame {
   flex: none; width: 22px; height: 22px; line-height: 1; cursor: pointer;
   color: var(--muted); background: transparent;
   border: 1px solid var(--line-2); border-radius: var(--r-1);
 }
-.nn-dossier-close:hover { color: var(--ink); border-color: var(--accent); }
+.nn-dossier-close:hover,
+.nn-dossier-frame:hover { color: var(--accent); border-color: var(--accent); }
 .nn-dossier-sub { font-size: var(--fs-small); color: var(--muted); margin-top: var(--sp-1); }
+
+/* V2.4 — itemized screening estimate inside the dossier (absorbs the old click popup) */
+.nn-dossier-cost {
+  margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3);
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-1);
+}
+.nn-dossier-cost-status { font-size: var(--fs-body); font-weight: 600; color: var(--ink); margin-bottom: var(--sp-1); }
+.nn-dossier-cost .nn-row { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-body); margin: 3px 0; }
+.nn-dossier-cost .nn-row em { color: var(--muted); font-style: normal; font-size: var(--fs-small); }
+.nn-dossier-cost .nn-row b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nn-dossier-cost .nn-total { border-top: 1px solid var(--line-2); margin-top: var(--sp-2); padding-top: var(--sp-2); font-weight: 700; }
+.nn-dossier-cost-foot { font-size: var(--fs-eyebrow); color: var(--muted); margin-top: var(--sp-1); font-style: italic; }
 .nn-dossier-empty { font-size: var(--fs-body); color: var(--muted); padding: var(--sp-3) 0; }
 .nn-dossier-list { list-style: none; margin: var(--sp-2) 0 0; padding: 0; max-height: 320px; overflow-y: auto; }
 .nn-dossier-poi { padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
@@ -562,9 +577,9 @@ body {
 }
 
 /* ============================================================================
-   responsive — panel becomes a drawer
+   responsive — panel becomes a draggable bottom sheet (V2.4)
    ============================================================================ */
-/* base rule MUST precede the media query: equal specificity → source order wins */
+/* base rules MUST precede the media query: equal specificity → source order wins */
 .nn-panel-toggle {
   display: none; /* shown only under the mobile media query below */
   position: fixed; top: 10px; right: 10px; z-index: 30;
@@ -573,19 +588,46 @@ body {
   padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); cursor: pointer;
   box-shadow: var(--sh-2);
 }
+.nn-sheet-grab { display: none; } /* mobile-only (shown in the media query below) */
+
 @media (max-width: 720px) {
   .nn-panel-toggle { display: inline-flex; align-items: center; }
+  /* Bottom sheet: anchored to the bottom edge, offset up/down via --sheet-ty
+     (peek/half/full, set inline by useSheetDrag). Peek shows ~120px. */
   .nn-panel {
-    position: absolute; z-index: 20; top: 0; left: 0; bottom: 0; height: 100%;
-    width: 88%; max-width: 372px; min-width: 0;
-    transform: translateX(-100%);
+    position: absolute; z-index: 20; left: 0; right: 0; bottom: 0; top: auto;
+    width: 100%; max-width: none; min-width: 0; height: 88vh;
+    border-right: none; border-top: 1px solid var(--line-2);
+    border-radius: var(--r-2) var(--r-2) 0 0;
+    padding-top: var(--sp-2);
+    transform: translateY(var(--sheet-ty, calc(88vh - 120px)));
     transition: transform var(--dur-med) var(--ease);
-    box-shadow: 2px 0 18px rgba(40, 30, 15, 0.22);
+    box-shadow: 0 -2px 18px rgba(40, 30, 15, 0.22);
+    overscroll-behavior: contain;
   }
-  .nn-panel.open { transform: translateX(0); }
+  /* grabber: a sticky drag handle pinned to the sheet's top edge */
+  .nn-sheet-grab {
+    display: block; position: sticky; top: 0; z-index: 2;
+    width: 100%; height: 26px; margin: 0 0 var(--sp-1); padding: 0;
+    background: var(--paper); border: none; cursor: grab; touch-action: none;
+  }
+  .nn-sheet-grab::before {
+    content: ""; display: block; width: 40px; height: 4px; margin: 8px auto 0;
+    background: var(--line-2); border-radius: var(--r-pill);
+  }
+  .nn-sheet-grab:active { cursor: grabbing; }
+  /* lift bottom-anchored map chrome clear of the peek strip (~120px) */
+  .nn-zoom { bottom: calc(120px + var(--sp-2)); }
+  .maplibregl-ctrl-bottom-left,
+  .maplibregl-ctrl-bottom-right { bottom: calc(120px + var(--sp-1)); }
   .maplibregl-ctrl-top-left { top: 4px; }
-  /* drop the onboarding cue below the ☰ Controls toggle (top-right on mobile) */
+  /* onboarding cue below the ☰ Controls toggle (top-right on mobile) */
   .nn-onboard { top: 56px; }
+}
+
+/* reduced motion: snap between detents with no slide */
+@media (prefers-reduced-motion: reduce) {
+  .nn-panel { transition: none; }
 }
 
 /* ============================================================================
