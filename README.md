@@ -12,6 +12,12 @@ reachable within budget. Built entirely from open data — **no real fiber, no o
 - **Design (source of truth):** [docs/DESIGN.md](docs/DESIGN.md)
 - **POI opportunity-signal policy:** [docs/POI_CATEGORIES.md](docs/POI_CATEGORIES.md)
 
+**What's live:** the road-routed proximity **screen** (cost-colored building surface + reachable-within-budget
+sliders), a second **cell-overview** altitude (H3 opportunity-index choropleth that drills back into the
+building screen), a click-to-select building **dossier** (nearest modeled corridor + per-POI detail + nearest
+address) with **per-building KMZ export**, and a mobile bottom-sheet layout — all over a **modeled** corridor,
+no real fiber or operator data.
+
 ## Architecture in one line
 
 Geographic **facts** (distances, crossings) are baked once, offline, into static GeoParquet;
@@ -20,7 +26,7 @@ arithmetic over baked facts — **no routing in the browser, ever** (DESIGN.md �
 
 ## `build/` — the offline ETL (Phase 0)
 
-Runs **once on a build machine** to produce the static `data/*.parquet`. The shipped V1 app
+Runs **once on a build machine** to produce the static `data/*.parquet`. The shipped web app
 ships **none** of this Python. The build routes/joins offline and bakes facts; see
 [docs/DESIGN.md §2](docs/DESIGN.md).
 
