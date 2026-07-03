@@ -1,6 +1,6 @@
 # nearnet-pittsburgh
 
-**▶ Live demo: https://the-snowmen.github.io/nearnet-pittsburgh-metro/**
+**▶ Live demo: https://the-snowmen.github.io/nearnet-pittsburgh/**
 
 Client-side fiber near-net proximity screen for Pittsburgh; DuckDB-WASM over static GeoParquet, no backend.
 

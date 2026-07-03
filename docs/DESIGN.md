@@ -350,7 +350,7 @@ Every `:param` is a slider (including `:circuity`); every column is a precompute
 
 ## 12. Repo & licensing
 
-**Repo name:** `nearnet-pittsburgh-metro` (under `the-snowmen`). Legible, accurate to the Pittsburgh scope, and harmless when skimmed in a list. Avoided `nearnet-pit` — the airport code reads as the English word "pit" to anyone who doesn't know PIT, which carries the wrong connotation, and the airport is west of the three-rivers core the screen actually targets. Deploys to `the-snowmen.github.io/nearnet-pittsburgh-metro/`.
+**Repo name:** `nearnet-pittsburgh` (under `the-snowmen`). Legible, accurate to the Pittsburgh scope, and harmless when skimmed in a list. Avoided `nearnet-pit` — the airport code reads as the English word "pit" to anyone who doesn't know PIT, which carries the wrong connotation, and the airport is west of the three-rivers core the screen actually targets. Deploys to `the-snowmen.github.io/nearnet-pittsburgh/`.
 
 **Code license:** **MIT.** Maximally permissive — the goal is for people to read the code and think well of it, not to control downstream use. Consistent with the other repos (GIS-Conflict-Dashboard, plugin suite) and with GeoLibre.
 
@@ -525,6 +525,7 @@ See §13 → "V1.5 aggregate opportunity-index cell layer" for the open question
 
 ## Changelog
 
+- **2026-07-03** — Repo renamed `nearnet-pittsburgh-metro` → `nearnet-pittsburgh`; Pages URL moves to `the-snowmen.github.io/nearnet-pittsburgh/`. Rename-safe (relative Vite `base`, base-relative data fetches); only docs/comment references updated.
 - **2026-07-02** — **V2.5 — per-building KMZ export + nearest building address; deployed.** The dossier's ⤓ exports the selected building as one self-contained KMZ (footprint polygon + its listings + its routed connector; cost-colored, itemized balloon, `tel:` pins, canvas legend, `fflate` zip) — new `web/src/export.ts` + `build/footprints.py` → `footprints.parquet` (GeoJSON-text, so the browser needs no spatial extension). Nearest **OSM** `addr:*` snapped per building (`build/addresses.py` → `building_address.parquet`, ~27% coverage; Overture's addresses theme is empty for Pittsburgh), shown in the dossier + KMZ as "… · nearest address (approx)". Live on GitHub Pages; `web/public/data/` is **tracked**, so the deploy serves the baked dataset without a CI rebuild.
 - **2026-07-02** — **V2.4 — click-to-explore + mobile bottom sheet + PMTiles surface.** Selecting a building now opens its dossier on **click** (was hover-only). The footprint surface became a **PMTiles** hybrid (dots overview / footprints zoomed) behind the same `feature-state` join, retiring the whole-GeoJSON browser load; the routed connector is fetched one building at a time from `connectors.parquet`. On small screens the dossier/controls become a draggable bottom sheet.
 - **2026-07-02** — **V2.3 — per-POI building dossier.** Clicking a building surfaces its assigned listings (Overture places detail retained in `pois.parquet`). Additive — does not change `poi_count` or any aggregate asset. See `docs/POI_CATEGORIES.md`.
