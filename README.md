@@ -2,6 +2,8 @@
 
 **▶ Live demo: https://the-snowmen.github.io/nearnet-pittsburgh/**
 
+![Modeled cost-screen surface re-lighting as the budget slider changes; the reachable-building count updates live.](docs/images/hero.gif)
+
 Client-side fiber near-net proximity screen for Pittsburgh; DuckDB-WASM over static GeoParquet, no backend.
 
 A fully client-side web app that screens buildings near a **modeled** fiber corridor as
@@ -17,6 +19,31 @@ sliders), a second **cell-overview** altitude (H3 opportunity-index choropleth t
 building screen), a click-to-select building **dossier** (nearest modeled corridor + per-POI detail + nearest
 address) with **per-building KMZ export**, and a mobile bottom-sheet layout — all over a **modeled** corridor,
 no real fiber or operator data.
+
+## What it looks like
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/cost.webp" width="100%" alt="Modeled cost-screen surface — Pittsburgh buildings colored green to red by screening estimate, over the modeled corridor and river crossings.">
+      <br><sub><b>Cost surface.</b> Every building shaded by its modeled screening estimate (green = lower, red = higher); the ramp tops out at your budget.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/dossier.webp" width="100%" alt="Selected-building dossier — an itemized screening estimate with the routed connector drawn to the corridor.">
+      <br><sub><b>Building dossier.</b> Click any building for an itemized screening estimate — routed connector distance, barrier crossings, and nearby public listings.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/cells.webp" width="100%" alt="H3 opportunity-index cell overview — a unitless modeled screening index, not dollars.">
+      <br><sub><b>Cell overview.</b> A second altitude: an H3 opportunity-index choropleth — a unitless modeled signal (not dollars) for gap-spotting.</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <img src="docs/images/mobile.webp" width="240" alt="Mobile bottom-sheet layout showing a building's itemized screening estimate.">
+      <br><sub><b>Mobile.</b> Responsive bottom-sheet layout — tap a building to slide up its screening estimate.</sub>
+    </td>
+  </tr>
+</table>
 
 ## Architecture in one line
 

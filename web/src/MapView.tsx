@@ -411,12 +411,30 @@ const MapView = forwardRef<MapViewHandle, Props>(function MapView({
         source: "bridges",
         paint: { "line-color": "#9b5de5", "line-width": 3, "line-opacity": 0.8 },
       });
-      // Connector for the hovered building (V2 routed polyline; straight-line fallback).
+      // Connector for the hovered/selected building — the measured run to the
+      // corridor (V2 routed polyline; straight-line fallback). White casing + bold
+      // solid core so the "route answer" reads over the cost surface and basemap.
+      // Solid matches the app's grammar (barriers dashed obstacle, routes solid).
+      map.addLayer({
+        id: "connectors-casing",
+        type: "line",
+        source: "hoverconn",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#ffffff",
+          "line-opacity": 0.9,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 12, 5, 17, 8],
+        },
+      });
       map.addLayer({
         id: "connectors-l",
         type: "line",
         source: "hoverconn",
-        paint: { "line-color": "#111", "line-width": 2, "line-dasharray": [1.5, 1] },
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#111827",
+          "line-width": ["interpolate", ["linear"], ["zoom"], 12, 2.5, 17, 4.5],
+        },
       });
 
       // Project extent — City of Pittsburgh clip outline (topmost, non-interactive).
