@@ -73,9 +73,10 @@ npm run preview     # serve the production build locally
 
 `vite.config.ts` uses a relative `base` so the build works under the GitHub
 Pages project path. Deploy serves `web/dist/` as static files — Pages serves the
-parquet/GeoJSON like images. The data assets in `web/public/data/` are copied
-into `dist/` by Vite at build time, so the deploy job must run `export_web`
-(and therefore `precompute`) before `npm run build`.
+parquet/GeoJSON like images. The data assets in `web/public/data/` are committed
+to the repo and copied into `dist/` by Vite at build time, so CI runs **no**
+Python: the deploy job only runs `npm ci && npm run build`. Regenerate the data
+locally with `export_web` and commit it whenever the pipeline changes.
 
 ### Footprint surface (done)
 

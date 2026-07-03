@@ -74,7 +74,7 @@ POI_WHITELIST_GROUPS = {
 # Network & barrier classes — one role per OSM class (DESIGN.md §4, §5.3)
 # --------------------------------------------------------------------------- #
 CORRIDOR_HIGHWAY = {"primary"}                 # modeled fiber corridor (§4 escape hatch measured:
-                                               # promoting secondary over-densifies — 76% in-range,
+                                               # promoting secondary over-densifies — 86.3% in-range,
                                                # arterial-crossing story collapses — so kept sparse)
 
 # V2 routing (DESIGN.md §3/§5.4) — the connector is a REAL road-following path,

@@ -2,7 +2,7 @@
 
 Produces the per-building facts (the V1/V2 swap point):
   - connector (centroid -> foot-of-perpendicular on nearest corridor segment)
-  - connector_distance_ft  (PURE straight-line; circuity is a browser slider, never baked)
+  - connector_distance_ft  (road-routed offline; circuity is a browser slider, never baked)
   - tiered crossing counts  (ST_Crosses gate + 0-D point count, §5.2)
   - bridge_available / nearest_bridge_ft (§7)
   - in_range (<= D_max)     (§9)
