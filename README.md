@@ -77,7 +77,7 @@ tunables `D_max`, POI snap distance, and corridor density).
 
 ## Stack
 
-- **App:** MapLibre GL JS + React/TypeScript, DuckDB-WASM over static GeoParquet, PMTiles basemap, GitHub Pages.
+- **App:** MapLibre GL JS + React/TypeScript, DuckDB-WASM over static GeoParquet, PMTiles building tiles (raster CDN basemap), GitHub Pages.
 - **Build:** Python — Overture/OSM/TIGER ingest, EPSG:2272 geometry, DuckDB emit.
 
 ## Licensing

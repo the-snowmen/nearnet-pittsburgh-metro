@@ -10,7 +10,7 @@ This document is the living design record for the project. It captures the archi
 
 A fully client-side web app that screens buildings near a modeled fiber network as candidate sales/planning prospects. The user sets a budget and cost assumptions with sliders; the map lights up which buildings are reachable within budget.
 
-It is built **entirely from public open data and general telecom domain knowledge** — the well-documented practice that long-haul and middle-mile fiber follows road right-of-way (§4). It contains **no proprietary or private third-party code or data**.
+It is built **entirely from public open data and general telecom domain knowledge** — the well-documented practice that long-haul and middle-mile fiber follows road right-of-way (§4). It contains **no private third-party code or data**.
 
 **Positioning:** a fully client-side, open-stack approach — no backend, no platform dependency, instant-load straight from static files on a CDN. The framing is about architecture and independence (a different set of tradeoffs), not a comparison to any specific product.
 
@@ -54,7 +54,7 @@ Pittsburgh/Allegheny County is in the **South** zone of PA State Plane (the Nort
             │
             ▼  (committed / uploaded)
 [ GitHub Pages — static hosting, no compute ]
-  Serves .parquet + PMTiles basemap as static bytes
+  Serves .parquet + PMTiles building tiles as static bytes
             │
             ▼
 [ User browser ]
@@ -99,7 +99,7 @@ OSM tags roads by **access control**, and that distinction is exactly what decid
 
 **Why a sparse corridor matters:** if every road carried fiber, every building would be trivially near it and the screen would say nothing. At city scale, `primary` is the major-arterial **spine** — a sparse, connected backbone that gives buildings genuine "breathing room," so reachable/unreachable is meaningful. It is also the realistic **middle-mile** corridor (long-haul fiber follows major-route ROW; `secondary` roads are minor arterials, more of a last-mile story V1 does not model).
 
-**Honesty label (mandatory):** "modeled fiber corridor from major-arterial ROW (`primary`)." Roads *approximate* likely corridors; they are **not** real fiber. Never imply real fiber or company data.
+**Honesty label (mandatory):** "modeled fiber corridor from major-arterial ROW (`primary`)." Roads *approximate* likely corridors; they are **not** real fiber. Never imply real fiber or operator data.
 
 **Phase-0 escape hatch (tunable):** the corridor class set is a parameter, not a hardcoded truth. If Phase 0 measures `primary`-only as too empty (most buildings beyond the plausible service distance `D_max`), promote `secondary` into the corridor set — at which point the arterial barrier tier (§5.3) collapses to "free" or `secondary` takes its dual role. The right density is an empirical question answered by measuring the building→corridor distance distribution on the real Pittsburgh data.
 
@@ -251,7 +251,7 @@ This is a real, labeled screening signal — "a cheaper crossing exists nearby" 
 ### Data-honesty notes
 
 - The only genuinely synthetic concept is **"existing conduit"** — there is no public dataset for real conduit. Do **not** invent one. Bridges serve as the honest proxy for lower-cost crossings (a bridge is a real structure that *might* carry fiber), labeled "potential lower-cost crossing," never "confirmed conduit."
-- Overall data statement: **real public-domain base geometry + synthetic/proxy network attributes.** Never imply real fiber or company data.
+- Overall data statement: **real public-domain base geometry + synthetic/proxy network attributes.** Never imply real fiber or operator data.
 
 ---
 
@@ -330,8 +330,8 @@ Every `:param` is a slider (including `:circuity`); every column is a precompute
 
 ## 10. Hard guardrails
 
-1. **Public data only.** Built entirely from public open data (§8) and general domain knowledge — no proprietary or private third-party code or data of any kind.
-2. **Data honesty.** Real public-domain base geometry + synthetic/proxy network attributes. Never imply real fiber or company data.
+1. **Public data only.** Built entirely from public open data (§8) and general domain knowledge — no private third-party code or data of any kind.
+2. **Data honesty.** Real public-domain base geometry + synthetic/proxy network attributes. Never imply real fiber or operator data.
 3. **No browser routing, ever.** Route offline at build time; ship answers.
 4. **The app stays a screen.** A lower-bound screening estimate with explicit slider assumptions — never a browser router. (V1 straight-line → V2 offline-routed distance; both shipped. All routing stays offline, per #3.)
 5. **Label models as models.** "Modeled corridor," "potential lower-cost crossing," "screening estimate" — never "fiber," "conduit," or "build cost."
@@ -342,8 +342,8 @@ Every `:param` is a slider (including `:circuity`); every column is a precompute
 
 - **Front end:** MapLibre GL JS, React/TypeScript
 - **Client-side data/SQL:** DuckDB-WASM over static GeoParquet
-- **Basemap:** PMTiles (static)
-- **Build step (offline):** Python — Overture/OSM ingest, reprojection to EPSG:2272, spatial joins, crossing detection; OSMnx/OSRM for V2 routing
+- **Building tiles:** PMTiles (static); basemap is a CARTO raster CDN in the shipped demo
+- **Build step (offline):** Python — Overture/OSM ingest, reprojection to EPSG:2272, spatial joins, crossing detection; OSMnx street graph + NetworkX multi-source Dijkstra for V2 routing
 - **Hosting:** GitHub Pages (no backend)
 
 ---
