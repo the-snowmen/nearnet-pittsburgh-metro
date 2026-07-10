@@ -3,6 +3,7 @@
 
 # Local-only agent guidance
 /CLAUDE.md
+/AGENTS.md
 
 # Python
 __pycache__/
@@ -24,6 +25,9 @@ env/
 web/node_modules/
 web/dist/
 web/*.tsbuildinfo
+
+# Local dev tooling deps (scripts/ recorder — the .mjs IS committed, deps are not)
+scripts/node_modules/
 # NOTE: web/public/data/ IS tracked — it's the deployed browser dataset (PMTiles +
 # facts parquet + small GeoJSON, ~50MB), shipped to GitHub Pages. Regenerate with
 # `python -m build.export_web`. The big tippecanoe inputs live in data/_web_tiles_src

@@ -1,0 +1,13 @@
+{
+  "name": "nearnet-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local dev tooling for nearnet-pittsburgh (not shipped to the app).",
+  "scripts": {
+    "record-hero": "node record-hero.mjs"
+  },
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.2"
+  }
+}

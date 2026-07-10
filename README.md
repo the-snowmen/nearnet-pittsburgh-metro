@@ -2,23 +2,33 @@
 
 **▶ Live demo: https://the-snowmen.github.io/nearnet-pittsburgh/**
 
-![Modeled cost-screen surface re-lighting as the budget slider changes; the reachable-building count updates live.](docs/images/hero.gif)
+![Modeled cost-screen demo: the budget slider re-lights the whole city surface green-to-red as the reachable-building count updates live, then a zoom into downtown opens one building's itemized screening estimate and its routed connector.](docs/images/hero.gif)
 
-Client-side fiber near-net proximity screen for Pittsburgh; DuckDB-WASM over static GeoParquet, no backend.
+An end-to-end, no-backend spatial-data pipeline for Pittsburgh: it precomputes road-routed
+proximity facts for 115,914 buildings, publishes them as static GeoParquet/PMTiles, and lets a
+browser screen modeled connection scenarios without routing in the browser.
 
-A fully client-side web app that screens buildings near a **modeled** fiber corridor as
-candidate prospects. Sliders set cost assumptions; the map lights up which buildings are
-reachable within budget. Built entirely from open data — **no real fiber, no operator data**
-(see the data-honesty discipline in [docs/DESIGN.md](docs/DESIGN.md)).
+It uses public base geometry plus synthetic/proxy network attributes. The map measures distance
+to a **modeled corridor**, not a verified network; every result is a screening estimate, not a quote.
+
+## What I built
+
+- **Offline spatial pipeline:** public-data ingest, EPSG:2272 measurement, multi-source Dijkstra,
+  crossing analysis, and static GeoParquet/PMTiles export.
+- **Browser analytics:** DuckDB-WASM recalculates the full-city screen from slider assumptions;
+  MapLibre updates a 115k-building cost surface without a backend.
+- **Explorable product surface:** building dossiers, routed connectors, opportunity cells,
+  per-building KMZ export, and a mobile bottom sheet.
 
 - **Design (source of truth):** [docs/DESIGN.md](docs/DESIGN.md)
+- **Project history:** [docs/HISTORY.md](docs/HISTORY.md)
 - **POI opportunity-signal policy:** [docs/POI_CATEGORIES.md](docs/POI_CATEGORIES.md)
 
 **What's live:** the road-routed proximity **screen** (cost-colored building surface + reachable-within-budget
 sliders), a second **cell-overview** altitude (H3 opportunity-index choropleth that drills back into the
 building screen), a click-to-select building **dossier** (nearest modeled corridor + per-POI detail + nearest
 address) with **per-building KMZ export**, and a mobile bottom-sheet layout — all over a **modeled** corridor,
-no real fiber or operator data.
+not a verified network or operator dataset.
 
 ## What it looks like
 
@@ -111,3 +121,9 @@ tunables `D_max`, POI snap distance, and corridor density).
 
 Code: **MIT**. Data carries its own terms (OSM **ODbL** attribution + share-alike; Overture,
 USGS NHD, Census TIGER attribution) — see [docs/DESIGN.md §12](docs/DESIGN.md).
+
+## GitHub presentation
+
+Use [cost.webp](docs/images/cost.webp) as the repository social-preview image in GitHub’s
+**Settings → General → Social preview**. The project does not synthesize a separate marketing
+image: links should show the real application.
