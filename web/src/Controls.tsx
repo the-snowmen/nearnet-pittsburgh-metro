@@ -109,53 +109,6 @@ export default function Controls({ sliders: s, onChange }: Props) {
         onChange={(budget) => onChange({ budget })}
       />
 
-      <div className="nn-group-h">Crossing costs (per crossing)</div>
-      <Row
-        label="Rail (bore under tracks)"
-        value={s.railCost}
-        min={0}
-        max={60000}
-        step={1000}
-        fmt={fmtUSD}
-        onChange={(railCost) => onChange({ railCost })}
-      />
-      <Row
-        label="Water — fresh bore"
-        value={s.boreCost}
-        min={0}
-        max={60000}
-        step={1000}
-        fmt={fmtUSD}
-        onChange={(boreCost) => onChange({ boreCost })}
-      />
-      <Row
-        label="Water — discounted (bridge nearby)"
-        value={s.bridgeCost}
-        min={0}
-        max={40000}
-        step={500}
-        fmt={fmtUSD}
-        onChange={(bridgeCost) => onChange({ bridgeCost })}
-      />
-      <Row
-        label="Interstate / limited-access"
-        value={s.interstateCost}
-        min={0}
-        max={50000}
-        step={1000}
-        fmt={fmtUSD}
-        onChange={(interstateCost) => onChange({ interstateCost })}
-      />
-      <Row
-        label="Arterial (surface major street)"
-        value={s.arterialCost}
-        min={0}
-        max={20000}
-        step={500}
-        fmt={fmtUSD}
-        onChange={(arterialCost) => onChange({ arterialCost })}
-      />
-
       <label className="nn-toggle">
         <input
           type="checkbox"
@@ -164,6 +117,58 @@ export default function Controls({ sliders: s, onChange }: Props) {
         />
         <span>Use bridges as lower-cost river crossings</span>
       </label>
+
+      <details className="nn-advanced">
+        <summary>Advanced crossing assumptions</summary>
+        <p>Set the per-crossing costs used by the screening model.</p>
+        <div className="nn-advanced-rows">
+          <Row
+            label="Rail (bore under tracks)"
+            value={s.railCost}
+            min={0}
+            max={60000}
+            step={1000}
+            fmt={fmtUSD}
+            onChange={(railCost) => onChange({ railCost })}
+          />
+          <Row
+            label="Water — fresh bore"
+            value={s.boreCost}
+            min={0}
+            max={60000}
+            step={1000}
+            fmt={fmtUSD}
+            onChange={(boreCost) => onChange({ boreCost })}
+          />
+          <Row
+            label="Water — discounted (bridge nearby)"
+            value={s.bridgeCost}
+            min={0}
+            max={40000}
+            step={500}
+            fmt={fmtUSD}
+            onChange={(bridgeCost) => onChange({ bridgeCost })}
+          />
+          <Row
+            label="Interstate / limited-access"
+            value={s.interstateCost}
+            min={0}
+            max={50000}
+            step={1000}
+            fmt={fmtUSD}
+            onChange={(interstateCost) => onChange({ interstateCost })}
+          />
+          <Row
+            label="Arterial (surface major street)"
+            value={s.arterialCost}
+            min={0}
+            max={20000}
+            step={500}
+            fmt={fmtUSD}
+            onChange={(arterialCost) => onChange({ arterialCost })}
+          />
+        </div>
+      </details>
     </div>
   );
 }

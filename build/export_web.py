@@ -144,7 +144,7 @@ def main() -> None:
     )
     print(f"points.geojson    (tile src): {n:,} centroids")
 
-    # 4) Modeled fiber corridor (primary roads).
+    # 4) Modeled corridor (primary roads).
     n = _dump_geojson(
         con,
         f"SELECT network_id, highway, ST_AsGeoJSON(geometry) AS g "

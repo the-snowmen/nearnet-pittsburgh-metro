@@ -73,13 +73,13 @@ POI_WHITELIST_GROUPS = {
 # --------------------------------------------------------------------------- #
 # Network & barrier classes — one role per OSM class (DESIGN.md §4, §5.3)
 # --------------------------------------------------------------------------- #
-CORRIDOR_HIGHWAY = {"primary"}                 # modeled fiber corridor (§4 escape hatch measured:
+CORRIDOR_HIGHWAY = {"primary"}                 # modeled corridor (§4 escape hatch measured:
                                                # promoting secondary over-densifies — 86.3% in-range,
                                                # arterial-crossing story collapses — so kept sparse)
 
 # V2 routing (DESIGN.md §3/§5.4) — the connector is a REAL road-following path,
 # solved offline over an OSM street graph. network_type="drive" is the connected
-# drivable street network fiber ROW follows to reach the primary backbone.
+# drivable street network the model follows to reach the primary backbone.
 ROUTING_NETWORK_TYPE = "drive"
 INTERSTATE_HIGHWAY = {"motorway", "trunk"}     # -> interstate_crossings
 ARTERIAL_HIGHWAY = {"secondary"}               # -> arterial_crossings

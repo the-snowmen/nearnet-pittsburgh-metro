@@ -142,7 +142,7 @@ function popupHTML(fct: BuildingFacts, s: Sliders): string {
        <div class="nn-pop-meta">${fct.building_class ?? "building"} · ${fct.poi_count} POI${
          fct.poi_count === 1 ? "" : "s"
        }${fct.bridge_available ? " · bridge nearby" : ""}</div>
-       <div class="nn-pop-foot">Modeled lower-bound screen — not a build cost.</div>
+       <div class="nn-pop-foot">Modeled lower-bound screen — not a quote.</div>
      </div>`;
 }
 
@@ -396,13 +396,13 @@ const MapView = forwardRef<MapViewHandle, Props>(function MapView({
         paint: { "line-color": "#111", "line-width": 2 },
       });
 
-      // Modeled fiber corridor (the network) — emphasized above the cost surface.
+      // Modeled corridor (the network) — emphasized above the cost surface.
       map.addLayer({
         id: "network-l",
         type: "line",
         source: "network",
         // SOLID + thick + full opacity: the corridor is the hero "route" line.
-        paint: { "line-color": "#0a9396", "line-width": 3, "line-opacity": 0.95 },
+        paint: { "line-color": "#3f3c8c", "line-width": 3, "line-opacity": 0.95 },
       });
       // Bridges — potential lower-cost crossings.
       map.addLayer({

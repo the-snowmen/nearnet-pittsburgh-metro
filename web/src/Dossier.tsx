@@ -215,7 +215,7 @@ export default function Dossier({ facts, pois, sliders, address, onClear, onFram
             <span>Estimated cost</span>
             <b>{fmtUSD(cost.total)}</b>
           </div>
-          <div className="nn-dossier-cost-foot">Modeled lower-bound screen — not a build cost.</div>
+          <div className="nn-dossier-cost-foot">Modeled lower-bound screen — not a quote.</div>
         </div>
       )}
 

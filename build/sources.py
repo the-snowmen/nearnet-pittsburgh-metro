@@ -214,7 +214,7 @@ def fetch_osm_graph(poly_4326):
 
     Edges keep their `highway` tag so geometry.py can mark the `primary` corridor
     nodes as routing targets. Separate from the `features_from_polygon` road layer:
-    that layer is display/barrier geometry; this is the topology fiber ROW routes over.
+    that layer is display/barrier geometry; this is the topology the model routes over.
     """
     ox.settings.use_cache = True
     ox.settings.cache_folder = str(C.CACHE_DIR / "osm_cache")

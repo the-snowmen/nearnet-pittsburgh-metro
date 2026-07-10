@@ -1,6 +1,6 @@
 # near-net · web
 
-The client-side front end for the Pittsburgh fiber **near-net proximity screen**.
+The client-side front end for the Pittsburgh **near-net proximity screen**.
 MapLibre GL JS + React/TypeScript + DuckDB-WASM over static GeoParquet — **no
 backend, no routing in the browser** (see [`../docs/DESIGN.md`](../docs/DESIGN.md)).
 
@@ -27,7 +27,7 @@ arithmetic over baked facts.
 - **`in_range`** buildings beyond the plausible service distance gray out
   (never silently dropped).
 - **Honesty framing throughout** — "modeled corridor", "lower-bound screen",
-  "not a build cost", no real fiber or operator data.
+  "not a quote", no verified network or operator data.
 
 ## Architecture (browser data shapes)
 
@@ -57,7 +57,7 @@ python -m build.precompute --full      # writes data/*.parquet  (~116k buildings
 python -m build.export_web             # writes web/public/data/* (parquet + PMTiles + geojson)
 
 # 2) web — from web/
-npm install
+npm ci
 npm run dev                            # http://localhost:5173
 ```
 
@@ -68,6 +68,7 @@ the pipeline); regenerate it with `export_web` after any rebuild and commit the 
 
 ```bash
 npm run build       # tsc + vite -> web/dist/  (base is relative, gh-pages-safe)
+npm test            # unit tests for the shared cost model
 npm run preview     # serve the production build locally
 ```
 
@@ -75,7 +76,7 @@ npm run preview     # serve the production build locally
 Pages project path. Deploy serves `web/dist/` as static files — Pages serves the
 parquet/GeoJSON like images. The data assets in `web/public/data/` are committed
 to the repo and copied into `dist/` by Vite at build time, so CI runs **no**
-Python: the deploy job only runs `npm ci && npm run build`. Regenerate the data
+Python: the deploy job runs `npm ci`, `npm test`, and `npm run build`. Regenerate the data
 locally with `export_web` and commit it whenever the pipeline changes.
 
 ### Footprint surface (done)

@@ -60,7 +60,7 @@ def route_to_corridor(buildings_2272, road_graph_4326, corridor_2272):
     n = len(buildings_2272)
 
     # ---- project graph to feet + build an undirected, weighted copy ------------ #
-    # Fiber ROW ignores one-ways, so route on the undirected graph.
+    # The modeled corridor ignores one-ways, so route on the undirected graph.
     G = ox.project_graph(road_graph_4326, to_crs=C.COMPUTE_CRS)
     UG = ox.convert.to_undirected(G)
     for u, v, data in UG.edges(data=True):

@@ -275,7 +275,7 @@ export default function App() {
           <p className="nn-honesty">
             Modeled corridor from major-arterial right-of-way. Distance is{" "}
             <b>road-routed</b> — an offline shortest path to the corridor, a
-            screening estimate, not a build cost. No real fiber or operator data.
+            screening estimate, not a quote. No real network or operator data.
           </p>
         </header>
 
@@ -354,7 +354,7 @@ export default function App() {
               <div className="nn-legend-group">
                 <div className="nn-legend-sub">Network <span>— solid</span></div>
                 <ul className="nn-legend-list">
-                  <li><i className="ln solid" style={{ background: "#0a9396" }} /> modeled fiber corridor (primary) <Info term="corridor" /></li>
+                  <li><i className="ln solid" style={{ background: "#3f3c8c" }} /> modeled corridor (primary) <Info term="corridor" /></li>
                   <li><i className="ln solid" style={{ background: "#9b5de5" }} /> bridge (potential lower-cost crossing)</li>
                 </ul>
               </div>

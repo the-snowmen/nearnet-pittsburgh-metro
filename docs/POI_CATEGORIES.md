@@ -11,7 +11,7 @@ distance, ~100–150 ft, Phase-0-tuned). This guarantees one-POI-one-building (n
 double-counting) and is robust to Overture geocoding slop.
 
 The signal is meant to capture **connectivity buyers** — occupied commercial /
-enterprise / institutional premises that would purchase fiber — and to exclude noise
+enterprise / institutional premises that could benefit from connectivity — and to exclude noise
 (benches, ATMs, transit stops, monuments, natural features).
 
 ## Filtering approach

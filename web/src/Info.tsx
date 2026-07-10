@@ -5,9 +5,9 @@ import { createPortal } from "react-dom";
 // term is defined once and reused wherever it appears in the panel.
 const GLOSSARY: Record<string, ReactNode> = {
   corridor:
-    "The modeled fiber route this screen measures distance to — built from major-arterial road right-of-way. A model, not real fiber.",
+    "The modeled route this screen measures distance to — built from major-arterial road right-of-way. A model, not a verified network.",
   "right-of-way":
-    "The public strip along a road where linear infrastructure like fiber is typically allowed to run.",
+    "The public strip along a road where linear infrastructure is typically allowed to run.",
   circuity:
     "A slack multiplier on the connector distance. The distance is already road-routed, so this is optional extra (≥ 1.00) for detours the model didn't capture.",
   "z-score":

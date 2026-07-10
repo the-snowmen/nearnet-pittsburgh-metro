@@ -1,9 +1,8 @@
 // Per-building KMZ export (Google Earth). Pure builders over the DuckDB rows
 // (duck.ts), no React. 100% client-side / backend-free.
 //
-// Data honesty (CLAUDE.md / DESIGN §10): filename + Document name say "modeled
-// screening estimate", never "fiber"/"conduit"/"build cost" (except the negating
-// disclaimer). Geometry is public open-data footprints + routed connectors; POIs are
+// Data honesty (DESIGN §10): filename + Document name say "modeled
+// screening estimate." Geometry is public open-data footprints + routed connectors; POIs are
 // a modeled tenant-density signal, never verified tenants.
 
 import { zipSync, strToU8 } from "fflate";
@@ -12,9 +11,9 @@ import type { ExportBuilding, ExportPoi, ExportGeom } from "./duck";
 
 const DISCLAIMER =
   "MODELED SCREENING ESTIMATE — a lower-bound screen built entirely from public open " +
-  "data + general telecom domain knowledge (fiber follows road right-of-way). Distances " +
-  "are road-routed offline (EPSG:2272, US survey feet). NOT real fiber, NOT operator data, " +
-  "NOT a build cost or quote. Listings are public Overture places (nearest-building snapped) " +
+  "data + general linear-infrastructure domain knowledge. Distances are road-routed offline " +
+  "(EPSG:2272, US survey feet). NOT a verified network or operator data, NOT a quote. " +
+  "Listings are public Overture places (nearest-building snapped) " +
   "— a modeled tenant-density signal, not verified tenants/customers.";
 
 // ---- shared helpers ---------------------------------------------------------
@@ -179,7 +178,7 @@ function balloonHtml(b: ExportBuilding, s: Sliders, address: string | null): str
     `<tr><td><b>Total (modeled screening estimate)</b></td>` +
     `<td style="text-align:right"><b>${xml(fmtUSD(total))}</b></td></tr></table>` +
     `${b.poi_count} listing(s) on this building.` +
-    `<div style="color:#999;font-size:11px;margin-top:6px">Modeled screening estimate — not a build cost.</div>` +
+    `<div style="color:#999;font-size:11px;margin-top:6px">Modeled screening estimate — not a quote.</div>` +
     `</div>`
   );
 }
