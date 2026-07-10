@@ -2,7 +2,7 @@
 
 **▶ Live demo: https://the-snowmen.github.io/nearnet-pittsburgh/**
 
-![Modeled cost-screen demo: the budget slider re-lights the whole city surface green-to-red as the reachable-building count updates live, then a zoom into downtown opens one building's itemized screening estimate and its routed connector.](docs/images/hero.gif)
+![Modeled cost-screen demo: the budget slider re-lights the whole city surface green-to-red as the reachable-building count updates live, then a zoom into downtown opens one building's itemized screening estimate and its routed connector.](docs/images/hero.webp)
 
 An end-to-end, no-backend spatial-data pipeline for Pittsburgh: it precomputes road-routed
 proximity facts for 115,914 buildings, publishes them as static GeoParquet/PMTiles, and lets a
